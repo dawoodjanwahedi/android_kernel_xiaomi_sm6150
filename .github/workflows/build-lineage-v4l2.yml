@@ -39,12 +39,8 @@ jobs:
       
       - name: Download Clang r547379
         run: |
-          mkdir -p clang-r547379
-          cd clang-r547379
-          wget -q https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r547379/archive/refs/heads/lineage-23.2.zip
-          unzip -q lineage-23.2.zip
-          cd ..
-          CLANG_BIN=$GITHUB_WORKSPACE/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin
+          git clone --depth=1 https://gitlab.com/itsshashanksp/android_prebuilts_clang_host_linux-x86_clang-r547379.git $HOME/clang
+          CLANG_BIN=$HOME/clang/clang-r547379/bin
           echo "CLANG_BIN=$CLANG_BIN" >> $GITHUB_ENV
           echo "$CLANG_BIN" >> $GITHUB_PATH
       
