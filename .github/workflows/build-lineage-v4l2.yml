@@ -46,8 +46,9 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/out
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sdmsteppe-perf_defconfig
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sweet.config
-          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- \
-            CONFIG_LTO=y CONFIG_LTO_CLANG=y -j$(nproc) 2>&1 | tee build.log
+          scripts/config --file $GITHUB_WORKSPACE/out/.config --enable LTO_CLANG
+          scripts/config --file $GITHUB_WORKSPACE/out/.config --disable LTO_NONE
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j4 2>&1 | tee build.log
       
       - name: Check for v4l2loopback in build
         run: |
