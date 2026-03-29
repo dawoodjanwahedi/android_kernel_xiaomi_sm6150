@@ -10,8 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: lineageos/docker-lineage-citools:latest
     
     steps:
       - name: Checkout code
@@ -19,12 +17,10 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Update package manager
-        run: apt-get update
-      
       - name: Install build dependencies
         run: |
-          apt-get install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
             build-essential \
             python3 \
             python3-dev \
@@ -36,7 +32,10 @@ jobs:
             bison \
             flex \
             libelf-dev \
-            libncurses-dev
+            libncurses-dev \
+            gcc-aarch64-linux-gnu \
+            binutils-aarch64-linux-gnu \
+            unzip
       
       - name: Download Clang r547379
         run: |
@@ -45,7 +44,9 @@ jobs:
           wget -q https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r547379/archive/refs/heads/lineage-23.2.zip
           unzip -q lineage-23.2.zip
           cd ..
-          export PATH=$PWD/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin:$PATH
+          CLANG_BIN=$GITHUB_WORKSPACE/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin
+          echo "CLANG_BIN=$CLANG_BIN" >> $GITHUB_ENV
+          echo "$CLANG_BIN" >> $GITHUB_PATH
       
       - name: Load kernel configuration
         run: |
@@ -54,13 +55,11 @@ jobs:
       
       - name: Generate kernel config
         run: |
-          export PATH=$PWD/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin:$PATH
-          make -C $PWD O=$PWD/out ARCH=arm64 CC=clang HOSTCC=clang olddefconfig 2>&1 || true
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 CC=clang HOSTCC=clang olddefconfig 2>&1 || true
       
       - name: Build kernel with LTO
         run: |
-          export PATH=$PWD/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin:$PATH
-          make -C $PWD O=$PWD/out ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- CC=clang HOSTCC=clang \
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang HOSTCC=clang \
             CONFIG_LTO=y CONFIG_LTO_CLANG=y -j$(nproc) 2>&1 | tee build.log
       
       - name: Check for v4l2loopback in build
@@ -73,11 +72,11 @@ jobs:
           fi
           
           echo "=== Kernel modules ==="
-          ls -la out/
+          ls -la $GITHUB_WORKSPACE/out/ || true
           
-          if [ -f "out/v4l2loopback.ko" ]; then
+          if [ -f "$GITHUB_WORKSPACE/out/v4l2loopback.ko" ]; then
             echo "✓ v4l2loopback.ko successfully built!"
-            file out/v4l2loopback.ko
+            file $GITHUB_WORKSPACE/out/v4l2loopback.ko
           fi
       
       - name: Create AnyKernel3 package
@@ -88,25 +87,26 @@ jobs:
           mkdir -p AnyKernel3/modules
           
           # Copy kernel image
-          if [ -f "out/arch/arm64/boot/Image" ]; then
-            cp out/arch/arm64/boot/Image AnyKernel3/kernel/lg/Image
+          if [ -f "$GITHUB_WORKSPACE/out/arch/arm64/boot/Image" ]; then
+            cp $GITHUB_WORKSPACE/out/arch/arm64/boot/Image AnyKernel3/kernel/lg/Image
             echo "✓ Kernel image copied"
           else
             echo "✗ Kernel image not found!"
+            ls -la $GITHUB_WORKSPACE/out/arch/arm64/boot/ || echo "boot dir not found"
             exit 1
           fi
           
           # Copy device tree blob
-          if [ -f "out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb" ]; then
-            cp out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb AnyKernel3/kernel/lg/
+          if [ -f "$GITHUB_WORKSPACE/out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb" ]; then
+            cp $GITHUB_WORKSPACE/out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb AnyKernel3/kernel/lg/
             echo "✓ DTB copied"
-          elif [ -f "out/arch/arm64/boot/dts/sm6150.dtb" ]; then
-            cp out/arch/arm64/boot/dts/sm6150.dtb AnyKernel3/kernel/lg/
+          elif [ -f "$GITHUB_WORKSPACE/out/arch/arm64/boot/dts/sm6150.dtb" ]; then
+            cp $GITHUB_WORKSPACE/out/arch/arm64/boot/dts/sm6150.dtb AnyKernel3/kernel/lg/
             echo "✓ DTB copied (alternate location)"
           fi
           
           # Copy kernel modules
-          find out -name "*.ko" -type f | while read ko; do
+          find $GITHUB_WORKSPACE/out -name "*.ko" -type f 2>/dev/null | while read ko; do
             cp "$ko" AnyKernel3/modules/
             echo "✓ Copied $(basename $ko)"
           done
@@ -148,4 +148,3 @@ jobs:
             Build details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
