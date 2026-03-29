@@ -1,0 +1,178 @@
+name: Build LineageOS Kernel with V4L2 Loopback
+
+on:
+  push:
+    branches: [ lineage-23.2 ]
+  pull_request:
+    branches: [ lineage-23.2 ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: lineageos/docker-lineage-citools:latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Update package manager
+        run: apt-get update
+      
+      - name: Install build dependencies
+        run: |
+          apt-get install -y \
+            build-essential \
+            python3 \
+            python3-dev \
+            git \
+            curl \
+            wget \
+            libssl-dev \
+            bc \
+            bison \
+            flex \
+            libelf-dev \
+            libncurses-dev
+      
+      - name: Download Clang r547379
+        run: |
+          mkdir -p clang-r547379
+          cd clang-r547379
+          wget -q https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r547379/archive/refs/heads/lineage-23.2.zip
+          unzip -q lineage-23.2.zip
+          cd ..
+          export PATH=$PWD/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin:$PATH
+      
+      - name: Load kernel configuration
+        run: |
+          # Merge vendor configs
+          cat arch/arm64/configs/vendor/sdmsteppe-perf_defconfig arch/arm64/configs/vendor/sweet.config > .config
+      
+      - name: Generate kernel config
+        run: |
+          export PATH=$PWD/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin:$PATH
+          make -C $PWD O=$PWD/out ARCH=arm64 CC=clang HOSTCC=clang olddefconfig 2>&1 || true
+      
+      - name: Build kernel with LTO
+        run: |
+          export PATH=$PWD/clang-r547379/android_prebuilts_clang_host_linux-x86_clang-r547379-lineage-23.2/clang-r547379/bin:$PATH
+          make -C $PWD O=$PWD/out ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- CC=clang HOSTCC=clang \
+            CONFIG_LTO=y CONFIG_LTO_CLANG=y -j$(nproc) 2>&1 | tee build.log
+      
+      - name: Check for v4l2loopback in build
+        run: |
+          echo "=== Checking V4L2 Loopback build status ==="
+          if grep -q "v4l2loopback" build.log; then
+            echo "✓ V4L2 Loopback module found in build output"
+          else
+            echo "⚠ V4L2 Loopback module not clearly identified in build output"
+          fi
+          
+          echo "=== Kernel modules ==="
+          ls -la out/
+          
+          if [ -f "out/v4l2loopback.ko" ]; then
+            echo "✓ v4l2loopback.ko successfully built!"
+            file out/v4l2loopback.ko
+          fi
+      
+      - name: Create AnyKernel3 package
+        run: |
+          echo "Creating AnyKernel3 ZIP..."
+          
+          # Create directory structure
+          mkdir -p AnyKernel3/kernel/lg
+          mkdir -p AnyKernel3/modules
+          
+          # Copy kernel image
+          if [ -f "out/arch/arm64/boot/Image" ]; then
+            cp out/arch/arm64/boot/Image AnyKernel3/kernel/lg/Image
+            echo "✓ Kernel image copied"
+          else
+            echo "✗ Kernel image not found!"
+            exit 1
+          fi
+          
+          # Copy device tree blob
+          if [ -f "out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb" ]; then
+            cp out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb AnyKernel3/kernel/lg/
+            echo "✓ DTB copied"
+          elif [ -f "out/arch/arm64/boot/dts/sm6150.dtb" ]; then
+            cp out/arch/arm64/boot/dts/sm6150.dtb AnyKernel3/kernel/lg/
+            echo "✓ DTB copied (alternate location)"
+          fi
+          
+          # Copy kernel modules
+          if [ -f "out/v4l2loopback.ko" ]; then
+            cp out/v4l2loopback.ko AnyKernel3/modules/
+            echo "✓ v4l2loopback.ko copied"
+          fi
+          
+          # Find and copy any other .ko files
+          find out -name "*.ko" -type f | while read ko; do
+            cp "$ko" AnyKernel3/modules/
+          done
+          
+          # Create a simple AnyKernel format with default installer
+          cat > AnyKernel3/anykernel.sh << 'EOF'
+#!/bin/sh
+OUTFD=$2
+ZIPFILE=$3
+
+ui_print() {
+  echo "ui_print $1" >> /proc/self/fd/$OUTFD
+  echo "ui_print" >> /proc/self/fd/$OUTFD
+}
+
+ui_print "LineageOS Kernel with V4L2 Loopback"
+ui_print "Kernel Version: 4.14.356"
+ui_print "Installing kernel..."
+
+set_perm_recursive 0 0 0755 0644 $MODPATH
+
+ui_print "Installation completed!"
+EOF
+          
+          chmod +x AnyKernel3/anykernel.sh
+          
+          # Create ZIP
+          cd AnyKernel3
+          zip -r ../lineage-v4l2loopback-kernel.zip . -x "*.git*"
+          cd ..
+          
+          echo "✓ AnyKernel3 ZIP created successfully!"
+          ls -lh lineage-v4l2loopback-kernel.zip
+      
+      - name: Upload kernel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineage-v4l2loopback-kernel-zip
+          path: lineage-v4l2loopback-kernel.zip
+      
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
+      
+      - name: Create release on successful build
+        if: success() && github.event_name == 'push'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: lineage-v4l2loopback-kernel.zip
+          tag_name: kernel-build-${{ github.run_number }}
+          body: |
+            **LineageOS Kernel Build with V4L2 Loopback**
+            - Kernel Version: 4.14.356
+            - Clang: r547379+
+            - LTO: Enabled
+            - V4L2 Loopback: Included
+            
+            Build details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,10 @@
+config V4L2_LOOPBACK
+	tristate "V4L2 Loopback driver"
+	depends on VIDEO_DEV
+	---help---
+	  This module allows you to create a virtual video loopback device.
+	  It is useful for applications that require a video input but do not have
+	  a physical video capture device.
+	  
+	  To compile this driver as a module, choose M here: the
+	  module will be called v4l2loopback.
