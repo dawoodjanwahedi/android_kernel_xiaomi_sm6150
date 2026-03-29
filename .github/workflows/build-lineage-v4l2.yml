@@ -176,3 +176,4 @@ EOF
             Build details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
