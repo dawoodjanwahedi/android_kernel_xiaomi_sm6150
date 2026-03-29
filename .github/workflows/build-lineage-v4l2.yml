@@ -55,6 +55,11 @@ jobs:
       
       - name: Build kernel with LTO
         run: |
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out mrproper 2>/dev/null || true
+          rm -rf $GITHUB_WORKSPACE/out
+          mkdir -p $GITHUB_WORKSPACE/out
+          cat arch/arm64/configs/vendor/sdmsteppe-perf_defconfig arch/arm64/configs/vendor/sweet.config > .config
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 CC=clang HOSTCC=clang olddefconfig
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang HOSTCC=clang \
             CONFIG_LTO=y CONFIG_LTO_CLANG=y -j$(nproc) 2>&1 | tee build.log
       
