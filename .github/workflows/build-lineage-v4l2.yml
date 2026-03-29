@@ -40,22 +40,12 @@ jobs:
           echo "CLANG_BIN=$CLANG_BIN" >> $GITHUB_ENV
           echo "$CLANG_BIN" >> $GITHUB_PATH
       
-      - name: Load kernel configuration
-        run: |
-          # Merge vendor configs
-          cat arch/arm64/configs/vendor/sdmsteppe-perf_defconfig arch/arm64/configs/vendor/sweet.config > .config
-      
-      - name: Generate kernel config
-        run: |
-          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 CC=clang HOSTCC=clang olddefconfig 2>&1 || true
-      
       - name: Build kernel with LTO
         run: |
-          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out mrproper 2>/dev/null || true
-          rm -rf $GITHUB_WORKSPACE/out
+          make -C $GITHUB_WORKSPACE mrproper
           mkdir -p $GITHUB_WORKSPACE/out
-          cat arch/arm64/configs/vendor/sdmsteppe-perf_defconfig arch/arm64/configs/vendor/sweet.config > .config
-          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 CC=clang HOSTCC=clang olddefconfig
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sdmsteppe-perf_defconfig
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sweet.config
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- \
             CONFIG_LTO=y CONFIG_LTO_CLANG=y -j$(nproc) 2>&1 | tee build.log
       
