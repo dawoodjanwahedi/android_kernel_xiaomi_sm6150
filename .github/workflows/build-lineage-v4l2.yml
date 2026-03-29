@@ -46,14 +46,13 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/out
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sdmsteppe-perf_defconfig
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sweet.config
-           # Enable LTO options if they exist in this kernel version
-           $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --enable LTO_CLANG 2>/dev/null || true
-           $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --disable LTO_NONE 2>/dev/null || true
-           # Sync config and auto-answer new kconfig options without interactive prompts
-           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 olddefconfig
-           # Display final config
-           echo "=== Final kernel config (LTO settings) ===" && grep -i "^CONFIG_LTO\|^CONFIG_THIN" $GITHUB_WORKSPACE/out/.config || echo "LTO options not found in config"
-          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j4 2>&1 | tee build.log
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 olddefconfig
+          echo "# CONFIG_QCA_CLD_WLAN is not set" >> $GITHUB_WORKSPACE/out/.config
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 olddefconfig
+          echo "# CONFIG_LTO_CLANG is not set" >> $GITHUB_WORKSPACE/out/.config
+          echo "CONFIG_LTO_NONE=y" >> $GITHUB_WORKSPACE/out/.config
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 olddefconfig
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j2 2>&1 | tee build.log
       
       - name: Check for v4l2loopback in build
         run: |
