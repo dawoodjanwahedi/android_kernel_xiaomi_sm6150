@@ -43,20 +43,9 @@ jobs:
       - name: Patch Kbuild link command for qcacld ARG_MAX
         working-directory: ${{ github.workspace }}
         run: |
-          cat > /tmp/patch_kbuild.py << 'PYEOF'
-          import pathlib, sys
-          path = pathlib.Path("scripts/Makefile.build")
-          old = 'cmd_link_multi-link = $(LD) $(ld_flags) -r -o $@ $(link_multi_deps) $(cmd_secanalysis)'
-          new = 'cmd_link_multi-link = $(file >$@.in,$(link_multi_deps)) $(LD) $(ld_flags) -r -o $@ @$@.in $(cmd_secanalysis); rm -f $@.in'
-          text = path.read_text()
-          if old not in text:
-              print("ERROR: pattern not found", file=sys.stderr)
-              sys.exit(1)
-          path.write_text(text.replace(old, new, 1))
-          print("Patch applied successfully")
-          PYEOF
-          python3 /tmp/patch_kbuild.py
+          sed -i 's|cmd_link_multi-link = $(LD) $(ld_flags) -r -o $@ $(link_multi_deps) $(cmd_secanalysis)|cmd_link_multi-link = $(file >$@.in,$(link_multi_deps)) $(LD) $(ld_flags) -r -o $@ @$@.in $(cmd_secanalysis); rm -f $@.in|' scripts/Makefile.build
           grep -n 'cmd_link_multi-link' scripts/Makefile.build
+          grep -q '@$@.in' scripts/Makefile.build && echo "Patch applied successfully" || { echo "ERROR: patch failed"; exit 1; }
       
       - name: Build kernel (WiFi enabled, LTO on)
         run: |
