@@ -136,16 +136,21 @@ jobs:
         run: |
           cd aosp
           source build/envsetup.sh
-          lunch aosp_arm64-trunk_staging-user 2>/dev/null || true
+          lunch aosp_arm64-trunk_staging-user 2>&1 || true
           export TARGET_PRODUCT=aosp_arm64
           export TARGET_BUILD_VARIANT=user
           export TARGET_RELEASE=trunk_staging
           export TARGET_ARCH=arm64
           export TARGET_ARCH_VARIANT=armv8-a
           export TARGET_CPU_VARIANT=generic
-          m android.hardware.camera.provider-V1-external-service -j4 2>&1 | tee build.log
-          # If m fails, show last 50 lines of log
-          grep -E "error:|Error|FAILED" build.log | tail -50 || true
+          echo "=== Starting build ==="
+          m android.hardware.camera.provider-V1-external-service -j4 2>&1 | tee build.log || true
+          echo "=== Build finished, checking output ==="
+          find out -name "android.hardware.camera.provider*" 2>/dev/null || echo "No camera provider output found"
+          echo "=== Last 80 lines of build log ==="
+          tail -80 build.log || true
+          echo "=== All errors ==="
+          grep -E "^.*error:" build.log | head -30 || true
 
       - name: Collect outputs
         run: |
