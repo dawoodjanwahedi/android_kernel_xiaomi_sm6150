@@ -1,0 +1,170 @@
+name: Build External Camera HAL (HIDL 2.7)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git python3 openjdk-17-jdk repo ninja-build \
+            libssl-dev libncurses5 libncurses5-dev bc bison flex libelf-dev \
+            build-essential zip unzip curl wget
+          # repo tool
+          mkdir -p ~/.local/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.local/bin/repo
+          chmod a+x ~/.local/bin/repo
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure git
+        run: |
+          git config --global user.email "ci@build.com"
+          git config --global user.name "CI Build"
+
+      - name: Repo init minimal AOSP android-16.0.0_r1
+        run: |
+          mkdir aosp && cd aosp
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android-16.0.0_r1 \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M
+
+      - name: Create sparse manifest for camera HAL only
+        run: |
+          cd aosp
+          mkdir -p .repo/local_manifests
+          cat > .repo/local_manifests/camera-only.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remove-project name="platform/packages/apps/Car/Cluster" />
+          </manifest>
+          EOF
+          repo sync -j4 --fail-fast \
+            hardware/interfaces/camera \
+            hardware/interfaces/common \
+            hardware/interfaces/common/fmq \
+            frameworks/av/camera \
+            frameworks/native \
+            system/core \
+            system/libhidl \
+            system/logging \
+            system/libbase \
+            system/libfmq \
+            prebuilts/clang/host/linux-x86 \
+            prebuilts/build-tools \
+            prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+            build/soong \
+            build/make \
+            build/blueprint \
+            build/bazel
+
+      - name: Build external camera HAL
+        run: |
+          cd aosp
+          source build/envsetup.sh
+          lunch aosp_arm64-user
+          m android.hardware.camera.provider-V1-external-service -j4
+
+      - name: Collect outputs
+        run: |
+          SERVICE=$(find aosp/out -name "android.hardware.camera.provider-V1-external-service" -type f | head -1)
+          if [ -z "$SERVICE" ]; then
+            echo "ERROR: binary not found"
+            exit 1
+          fi
+          mkdir -p module_tmp/system/vendor/bin/hw
+          cp "$SERVICE" module_tmp/system/vendor/bin/hw/
+          echo "Binary collected: $(ls -lh module_tmp/system/vendor/bin/hw/)"
+
+      - name: Create module files
+        run: |
+          set -euo pipefail
+
+          mkdir -p module_tmp/system/vendor/etc/init
+          mkdir -p module_tmp/META-INF/com/google/android
+
+          cat > module_tmp/system/vendor/etc/external_camera_config.xml << 'EOF'
+          <ExternalCamera>
+              <Provider>
+                  <ignore>
+                      <id>0</id>
+                      <id>1</id>
+                      <id>2</id>
+                      <id>3</id>
+                  </ignore>
+              </Provider>
+              <Device>
+                  <MaxJpegBufferSize bytes="33554432"/>
+                  <NumVideoBuffers>4</NumVideoBuffers>
+                  <NumStillBuffers>2</NumStillBuffers>
+                  <FpsLimits>
+                      <FpsLimit>
+                          <size width="1280" height="720"/>
+                          <fpsUpperBound>30</fpsUpperBound>
+                      </FpsLimit>
+                  </FpsLimits>
+                  <MinimumStreamSize width="640" height="480"/>
+              </Device>
+          </ExternalCamera>
+          EOF
+
+            cat > module_tmp/system/vendor/etc/init/android.hardware.camera.provider-V1-external.rc << 'EOF'
+            service vendor.camera.provider2_7_ext /vendor/bin/hw/android.hardware.camera.provider-V1-external-service
+              class hal
+              user cameraserver
+              group audio camera input drmrpc
+              ioprio rt 4
+              capabilities SYS_NICE
+              onrestart restart cameraserver
+          EOF
+
+          cat > module_tmp/module.prop << 'EOF'
+          id=external-camera-hal
+          name=External Camera HAL v2.7
+          version=v1
+          versionCode=1
+          author=dawoodjanwahedi
+          description=External Camera HAL for v4l2loopback on LineageOS 23.2
+          EOF
+
+          cat > module_tmp/META-INF/com/google/android/updater-script << 'EOF'
+          #MAGISK
+          EOF
+
+          cat > module_tmp/META-INF/com/google/android/update-binary << 'EOF'
+          #!/sbin/sh
+          umask 022
+          ui_print() { echo "$1"; }
+          OUTFD=$2
+          ZIPFILE=$3
+          ui_print "*******************************"
+          ui_print " External Camera HAL v2.7 "
+          ui_print "*******************************"
+          unzip -o "$ZIPFILE" 'system/*' -d /
+          ui_print "Install complete"
+          exit 0
+          EOF
+          chmod 0755 module_tmp/META-INF/com/google/android/update-binary
+
+      - name: Package Magisk module
+        run: |
+          cd module_tmp
+          zip -r ../external-camera-hal-magisk.zip .
+          cd ..
+          ls -lh external-camera-hal-magisk.zip
+
+      - name: Upload module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-camera-hal-magisk
+          path: external-camera-hal-magisk.zip
