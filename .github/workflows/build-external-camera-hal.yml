@@ -64,7 +64,6 @@ jobs:
             prebuilts/cmake/linux-x86 \
             prebuilts/ninja/linux-x86 \
             prebuilts/jdk/jdk21 \
-            prebuilts/tools-lineage/linux-x86 \
             build/soong \
             build/make \
             build/blueprint \
@@ -77,10 +76,7 @@ jobs:
             external/protobuf \
             external/libnl \
             external/gtest \
-            external/eigen \
-            external/flatbuffers \
             external/lz4 \
-            external/lzma \
             external/zlib \
             external/zstd \
             external/expat \
