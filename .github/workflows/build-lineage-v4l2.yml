@@ -48,17 +48,18 @@ jobs:
           import sys
 
           path = pathlib.Path("scripts/Makefile.build")
-          old = "cmd_link_multi-m = $(LD) $(ld_flags) -r -o $@ $(filter %.o,$^)"
-          new = "cmd_link_multi-m = $(file >$@.in,$(filter %.o,$^)) $(LD) $(ld_flags) -r -o $@ @$@.in; rm -f $@.in"
+          old = "cmd_link_multi-link = $(LD) $(ld_flags) -r -o $@ $(link_multi_deps) $(cmd_secanalysis)"
+          new = "cmd_link_multi-link = $(file >$@.in,$(link_multi_deps)) $(LD) $(ld_flags) -r -o $@ @$@.in $(cmd_secanalysis); rm -f $@.in"
 
           text = path.read_text()
           if old not in text:
-              print("ERROR: cmd_link_multi-m pattern not found in scripts/Makefile.build", file=sys.stderr)
+            print("ERROR: cmd_link_multi-link pattern not found in scripts/Makefile.build", file=sys.stderr)
               sys.exit(1)
 
           path.write_text(text.replace(old, new, 1))
+            print("Patch applied successfully")
           PY
-          grep -n '^cmd_link_multi-m' $GITHUB_WORKSPACE/scripts/Makefile.build
+            grep -n 'cmd_link_multi-link' scripts/Makefile.build
       
       - name: Build kernel (WiFi enabled, LTO on)
         run: |
