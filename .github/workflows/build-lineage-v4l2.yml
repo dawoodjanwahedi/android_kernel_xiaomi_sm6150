@@ -86,15 +86,15 @@ jobs:
           mkdir -p AnyKernel3/kernel/lg
           mkdir -p AnyKernel3/modules
           
-          # Copy kernel image
-          if [ -f "$GITHUB_WORKSPACE/out/arch/arm64/boot/Image" ]; then
-            cp $GITHUB_WORKSPACE/out/arch/arm64/boot/Image AnyKernel3/kernel/lg/Image
-            echo "✓ Kernel image copied"
-          else
+          # Find kernel image (could be Image, Image.gz, or Image.gz-dtb)
+          KERNEL_IMAGE=$(find $GITHUB_WORKSPACE/out/arch/arm64/boot -maxdepth 1 -type f \( -name "Image" -o -name "Image.gz" -o -name "Image.gz-dtb" \) | head -1)
+          if [ -z "$KERNEL_IMAGE" ]; then
             echo "✗ Kernel image not found!"
-            ls -la $GITHUB_WORKSPACE/out/arch/arm64/boot/ || echo "boot dir not found"
+            find $GITHUB_WORKSPACE/out/arch/arm64/boot/ -type f
             exit 1
           fi
+          cp "$KERNEL_IMAGE" AnyKernel3/
+          echo "✓ Kernel image copied: $(basename $KERNEL_IMAGE)"
           
           # Copy device tree blob
           if [ -f "$GITHUB_WORKSPACE/out/arch/arm64/boot/dts/xiaomi/sm6150-sweet.dtb" ]; then
