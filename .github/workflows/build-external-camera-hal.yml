@@ -29,7 +29,7 @@ jobs:
           git config --global user.email "ci@build.com"
           git config --global user.name "CI Build"
 
-      - name: Repo init minimal AOSP android-16.0.0_r1
+      - name: Repo init AOSP android-16.0.0_r1
         run: |
           mkdir aosp && cd aosp
           repo init \
@@ -39,34 +39,43 @@ jobs:
             --partial-clone \
             --clone-filter=blob:limit=10M
 
-      - name: Create sparse manifest for camera HAL only
+      - name: Create sparse manifest
         run: |
           cd aosp
           mkdir -p .repo/local_manifests
-          cat > .repo/local_manifests/camera-only.xml << 'EOF'
+          cat > .repo/local_manifests/sparse.xml << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
             <remove-project name="platform/packages/apps/Car/Cluster" />
+            <remove-project name="platform/packages/apps/Car/Dialer" />
+            <remove-project name="platform/packages/apps/Car/Launcher" />
+            <remove-project name="platform/packages/apps/Car/libs" />
+            <remove-project name="platform/packages/apps/Car/Media" />
+            <remove-project name="platform/packages/apps/Car/Radio" />
+            <remove-project name="platform/packages/apps/Car/Settings" />
+            <remove-project name="platform/packages/apps/Car/SystemUI" />
+            <remove-project name="platform/packages/apps/Car/tests" />
+            <remove-project name="platform/frameworks/base" />
+            <remove-project name="platform/packages/apps/Browser2" />
+            <remove-project name="platform/packages/apps/Calendar" />
+            <remove-project name="platform/packages/apps/Camera2" />
+            <remove-project name="platform/packages/apps/Contacts" />
+            <remove-project name="platform/packages/apps/DeskClock" />
+            <remove-project name="platform/packages/apps/Email" />
+            <remove-project name="platform/packages/apps/Gallery2" />
+            <remove-project name="platform/packages/apps/Messaging" />
+            <remove-project name="platform/packages/apps/Music" />
+            <remove-project name="platform/packages/apps/Settings" />
+            <remove-project name="platform/packages/apps/TV" />
+            <remove-project name="platform/packages/providers/MediaProvider" />
+            <remove-project name="platform/cts" />
+            <remove-project name="platform/tools/tradefederation" />
+            <remove-project name="platform/external/chromium-webview" />
+            <remove-project name="platform/external/icu" />
+            <remove-project name="platform/external/rust/crates/unicode-bidi" />
           </manifest>
           EOF
-          repo sync -j4 --fail-fast \
-            hardware/interfaces/camera \
-            hardware/interfaces/common \
-            hardware/interfaces/common/fmq \
-            frameworks/av/camera \
-            frameworks/native \
-            system/core \
-            system/libhidl \
-            system/logging \
-            system/libbase \
-            system/libfmq \
-            prebuilts/clang/host/linux-x86 \
-            prebuilts/build-tools \
-            prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
-            build/soong \
-            build/make \
-            build/blueprint \
-            build/bazel
+          repo sync -j4 --fail-fast --no-tags
 
       - name: Build external camera HAL
         run: |
