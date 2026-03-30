@@ -53,7 +53,6 @@ jobs:
             system/core \
             system/tools/aidl \
             system/tools/hidl \
-            system/tools/mkbootfs \
             system/libhidl \
             system/logging \
             system/libbase \
