@@ -62,7 +62,7 @@ jobs:
         run: |
           cd aosp
           source build/envsetup.sh
-          lunch aosp_arm64-user
+          lunch aosp_arm64-ap4a-user
           m android.hardware.camera.provider-V1-external-service -j4
 
       - name: Collect outputs
