@@ -53,6 +53,8 @@ jobs:
             system/libbase \
             system/libfmq \
             prebuilts/clang/host/linux-x86 \
+            prebuilts/go/linux-x86 \
+            prebuilts/python/linux-x86 \
             prebuilts/build-tools \
             build/soong \
             build/make \
