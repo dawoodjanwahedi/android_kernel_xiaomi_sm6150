@@ -42,6 +42,64 @@ jobs:
             --partial-clone \
             --clone-filter=blob:limit=10M
 
+      - name: Validate sync paths
+        run: |
+          cd aosp
+          # List all available projects to verify paths exist
+          repo list 2>/dev/null | awk '{print $1}' > /tmp/available_projects.txt
+          echo "Total available projects: $(wc -l < /tmp/available_projects.txt)"
+
+          PATHS=(
+            "hardware/interfaces"
+            "hardware/libhardware"
+            "frameworks/av"
+            "frameworks/native"
+            "system/core"
+            "system/libhidl"
+            "system/logging"
+            "system/libbase"
+            "system/libfmq"
+            "prebuilts/clang/host/linux-x86"
+            "prebuilts/build-tools"
+            "prebuilts/go/linux-x86"
+            "prebuilts/cmake/linux-x86"
+            "prebuilts/ninja/linux-x86"
+            "prebuilts/jdk/jdk21"
+            "build/soong"
+            "build/make"
+            "build/blueprint"
+            "external/libcxx"
+            "external/libcxxabi"
+            "external/fmtlib"
+            "external/googletest"
+            "external/boringssl"
+            "external/protobuf"
+            "external/libnl"
+            "external/gtest"
+            "external/zlib"
+            "external/zstd"
+            "external/expat"
+            "external/lz4"
+            "system/tools/aidl"
+            "system/tools/hidl"
+            "libnativehelper"
+          )
+
+          VALID=""
+          INVALID=""
+          for p in "${PATHS[@]}"; do
+            if grep -q "^$p " /tmp/available_projects.txt; then
+              VALID="$VALID $p"
+            else
+              INVALID="$INVALID\n  MISSING: $p"
+            fi
+          done
+
+          echo "=== MISSING PROJECTS ==="
+          echo -e "$INVALID"
+          echo "=== ALL VALID ==="
+          echo "$VALID"
+
       - name: Repo sync AOSP
         run: |
           cd aosp
