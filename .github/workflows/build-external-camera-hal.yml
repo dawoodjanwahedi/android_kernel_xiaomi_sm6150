@@ -135,26 +135,27 @@ jobs:
       - name: Build external camera HAL
         run: |
           cd aosp
-          source build/envsetup.sh
-          lunch aosp_arm64-trunk_staging-user 2>&1 || true
+          source build/envsetup.sh || true
           export TARGET_PRODUCT=aosp_arm64
           export TARGET_BUILD_VARIANT=user
           export TARGET_RELEASE=trunk_staging
           export TARGET_ARCH=arm64
-          export TARGET_ARCH_VARIANT=armv8-a
-          export TARGET_CPU_VARIANT=generic
-          echo "=== Starting build ==="
-          m android.hardware.camera.provider-V1-external-service -j4 2>&1 | tee build.log || true
-          echo "=== Build finished, checking output ==="
-          find out -name "android.hardware.camera.provider*" 2>/dev/null || echo "No camera provider output found"
-          echo "=== Last 80 lines of build log ==="
-          tail -80 build.log || true
-          echo "=== All errors ==="
-          grep -E "^.*error:" build.log | head -30 || true
+          echo "=== Running lunch ==="
+          lunch aosp_arm64-trunk_staging-user || true
+          echo "=== Running make ==="
+          m android.hardware.camera.provider-V1-external-service -j4 2>&1 | tee /tmp/build.log || true
+          echo "=== LAST 100 LINES ==="
+          tail -100 /tmp/build.log
+          echo "=== ERRORS ==="
+          grep -i "error:" /tmp/build.log | head -50 || echo "no errors found in grep"
+          echo "=== BUILD OUTPUT FILES ==="
+          find out -type f -name "*.so" 2>/dev/null | head -20 || echo "no .so files"
+          find out -type f -name "*camera*" 2>/dev/null | head -20 || echo "no camera files"
 
       - name: Collect outputs
         run: |
-          SERVICE=$(find aosp/out -name "android.hardware.camera.provider-V1-external-service" -type f | head -1)
+          cd aosp
+          SERVICE=$(find out -name "android.hardware.camera.provider-V1-external-service" -type f | head -1)
           if [ -z "$SERVICE" ]; then
             echo "ERROR: binary not found"
             exit 1
