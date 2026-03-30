@@ -118,21 +118,14 @@ jobs:
             prebuilts/clang/host/linux-x86 \
             prebuilts/build-tools \
             prebuilts/go/linux-x86 \
-            prebuilts/cmake/linux-x86 \
-            prebuilts/ninja/linux-x86 \
-            prebuilts/jdk/jdk21 \
             build/soong \
             build/make \
             build/blueprint \
-            toolchain/prebuilts/ndk/r27 \
             external/libcxx \
             external/libcxxabi \
-            external/fmtlib \
             external/googletest \
             external/boringssl \
             external/protobuf \
-            external/libnl \
-            external/gtest \
             external/lz4 \
             external/zlib \
             external/zstd \
