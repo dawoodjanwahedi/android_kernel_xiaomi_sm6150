@@ -39,20 +39,41 @@ jobs:
           CLANG_BIN=$HOME/clang/bin
           echo "CLANG_BIN=$CLANG_BIN" >> $GITHUB_ENV
           echo "$CLANG_BIN" >> $GITHUB_PATH
+
+      - name: Patch Kbuild link command for qcacld ARG_MAX
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import sys
+
+          path = pathlib.Path("scripts/Makefile.build")
+          old = "cmd_link_multi-m = $(LD) $(ld_flags) -r -o $@ $(filter %.o,$^)"
+          new = "cmd_link_multi-m = $(file >$@.in,$(filter %.o,$^)) $(LD) $(ld_flags) -r -o $@ @$@.in; rm -f $@.in"
+
+          text = path.read_text()
+          if old not in text:
+              print("ERROR: cmd_link_multi-m pattern not found in scripts/Makefile.build", file=sys.stderr)
+              sys.exit(1)
+
+          path.write_text(text.replace(old, new, 1))
+          PY
+          grep -n '^cmd_link_multi-m' $GITHUB_WORKSPACE/scripts/Makefile.build
       
-      - name: Build kernel (WiFi enabled, LTO off)
+      - name: Build kernel (WiFi enabled, LTO on)
         run: |
           make -C $GITHUB_WORKSPACE mrproper
           mkdir -p $GITHUB_WORKSPACE/out
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sdmsteppe-perf_defconfig
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 vendor/sweet.config
-          # Keep WiFi driver enabled, but disable LTO to avoid qcacld argument overflow.
+          # Keep WiFi and v4l2loopback enabled and restore LTO.
           $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --enable QCA_CLD_WLAN 2>/dev/null || true
-          $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --disable LTO_CLANG 2>/dev/null || true
-          $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --enable LTO_NONE 2>/dev/null || true
+          $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --enable V4L2_LOOPBACK 2>/dev/null || true
+          $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --disable LTO_NONE 2>/dev/null || true
+          $GITHUB_WORKSPACE/scripts/config --file $GITHUB_WORKSPACE/out/.config --enable LTO_CLANG 2>/dev/null || true
           make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 olddefconfig
-          grep -E "^CONFIG_QCA_CLD_WLAN=|^CONFIG_LTO_" $GITHUB_WORKSPACE/out/.config || true
-          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j2 2>&1 | tee build.log
+          grep -E "^CONFIG_QCA_CLD_WLAN=|^CONFIG_V4L2_LOOPBACK=|^CONFIG_LTO_" $GITHUB_WORKSPACE/out/.config || true
+          make -C $GITHUB_WORKSPACE O=$GITHUB_WORKSPACE/out ARCH=arm64 LLVM=1 LLVM_IAS=1 AR=llvm-ar NM=llvm-nm LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j2 2>&1 | tee build.log
       
       - name: Check for v4l2loopback in build
         run: |
