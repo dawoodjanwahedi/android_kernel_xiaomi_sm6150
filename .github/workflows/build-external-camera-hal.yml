@@ -53,19 +53,38 @@ jobs:
             system/libbase \
             system/libfmq \
             prebuilts/clang/host/linux-x86 \
-            prebuilts/go/linux-x86 \
-            prebuilts/python/linux-x86 \
             prebuilts/build-tools \
+            prebuilts/go/linux-x86 \
+            prebuilts/cmake/linux-x86 \
+            prebuilts/ninja/linux-x86 \
+            prebuilts/jdk/jdk21 \
             build/soong \
             build/make \
-            build/blueprint
+            build/blueprint \
+            toolchain/prebuilts/ndk/r27 \
+            external/libcxx \
+            external/libcxxabi \
+            external/fmtlib \
+            external/googletest \
+            external/boringssl \
+            external/protobuf \
+            external/libnl \
+            external/gtest
 
       - name: Build external camera HAL
         run: |
           cd aosp
           source build/envsetup.sh
-          lunch aosp_arm64-ap4a-user
-          m android.hardware.camera.provider-V1-external-service -j4
+          lunch aosp_arm64-ap4a-user 2>/dev/null || true
+          export TARGET_PRODUCT=aosp_arm64
+          export TARGET_BUILD_VARIANT=user
+          export TARGET_RELEASE=ap4a
+          export TARGET_ARCH=arm64
+          export TARGET_ARCH_VARIANT=armv8-a
+          export TARGET_CPU_VARIANT=generic
+          m android.hardware.camera.provider-V1-external-service -j4 2>&1 | tee build.log
+          # If m fails, show last 50 lines of log
+          grep -E "error:|Error|FAILED" build.log | tail -50 || true
 
       - name: Collect outputs
         run: |
