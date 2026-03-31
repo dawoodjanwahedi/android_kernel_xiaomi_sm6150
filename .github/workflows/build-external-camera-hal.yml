@@ -125,6 +125,7 @@ jobs:
             external/libcxxabi \
             external/googletest \
             external/boringssl \
+            external/golang-protobuf \
             external/protobuf \
             external/lz4 \
             external/zlib \
