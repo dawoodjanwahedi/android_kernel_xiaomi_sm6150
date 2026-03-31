@@ -134,6 +134,7 @@ jobs:
 
       - name: Build external camera HAL
         run: |
+          set -x
           cd aosp
           source build/envsetup.sh || true
           export TARGET_PRODUCT=aosp_arm64
@@ -151,6 +152,13 @@ jobs:
           echo "=== BUILD OUTPUT FILES ==="
           find out -type f -name "*.so" 2>/dev/null | head -20 || echo "no .so files"
           find out -type f -name "*camera*" 2>/dev/null | head -20 || echo "no camera files"
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build.log
 
       - name: Collect outputs
         run: |
