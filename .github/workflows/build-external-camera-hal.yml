@@ -134,24 +134,17 @@ jobs:
 
       - name: Build external camera HAL
         run: |
-          set -x
           cd aosp
-          source build/envsetup.sh || true
-          export TARGET_PRODUCT=aosp_arm64
-          export TARGET_BUILD_VARIANT=user
-          export TARGET_RELEASE=trunk_staging
-          export TARGET_ARCH=arm64
-          echo "=== Running lunch ==="
-          lunch aosp_arm64-trunk_staging-user || true
-          echo "=== Running make ==="
-          m android.hardware.camera.provider-V1-external-service -j4 2>&1 | tee /tmp/build.log || true
-          echo "=== LAST 100 LINES ==="
-          tail -100 /tmp/build.log
-          echo "=== ERRORS ==="
-          grep -i "error:" /tmp/build.log | head -50 || echo "no errors found in grep"
-          echo "=== BUILD OUTPUT FILES ==="
-          find out -type f -name "*.so" 2>/dev/null | head -20 || echo "no .so files"
-          find out -type f -name "*camera*" 2>/dev/null | head -20 || echo "no camera files"
+          echo "=== 1. Source envsetup ==="
+          source build/envsetup.sh
+          echo "=== 2. Lunch ==="
+          lunch aosp_arm64-trunk_staging-user
+          echo "=== 3. Check m exists ==="
+          type m
+          echo "=== 4. Run build ==="
+          m android.hardware.camera.provider-V1-external-service -j4
+          echo "=== 5. Find output ==="
+          find out -name "*camera*provider*" 2>/dev/null
 
       - name: Upload build log
         if: always()
