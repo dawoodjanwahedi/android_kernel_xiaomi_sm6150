@@ -143,6 +143,14 @@ jobs:
           mkdir -p vendor/google/release
           cat > vendor/google/release/release_config_map.textproto << 'EOF'
           format_version: 1
+          default_containers: "vendor/google/release"
+          EOF
+          mkdir -p vendor/google/release/build_flags
+          cat > vendor/google/release/build_flags/all_flags.textproto << 'EOF'
+          EOF
+          mkdir -p vendor/google/release/releases
+          cat > vendor/google/release/releases/ap1a.textproto << 'EOF'
+          name: "ap1a"
           EOF
           echo "=== 2. Lunch ==="
           lunch aosp_arm64-ap1a-user
