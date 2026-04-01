@@ -132,7 +132,6 @@ jobs:
             external/zstd \
             external/expat \
             external/starlark-go \
-            vendor/google/release \
             libnativehelper
 
       - name: Build external camera HAL
@@ -140,6 +139,11 @@ jobs:
           cd aosp
           echo "=== 1. Source envsetup ==="
           source build/envsetup.sh
+          # Create minimal release config to replace private vendor/google/release
+          mkdir -p vendor/google/release
+          cat > vendor/google/release/release_config_map.textproto << 'EOF'
+          format_version: 1
+          EOF
           echo "=== 2. Lunch ==="
           lunch aosp_arm64-ap1a-user
           echo "=== 3. Check m exists ==="
