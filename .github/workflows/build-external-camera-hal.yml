@@ -131,6 +131,7 @@ jobs:
             external/zlib \
             external/zstd \
             external/expat \
+            external/starlark-go \
             libnativehelper
 
       - name: Build external camera HAL
