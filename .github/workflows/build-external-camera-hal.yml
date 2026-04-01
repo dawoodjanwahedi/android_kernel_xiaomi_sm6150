@@ -140,18 +140,16 @@ jobs:
           echo "=== 1. Source envsetup ==="
           source build/envsetup.sh
           # Create minimal release config to replace private vendor/google/release
-          mkdir -p vendor/google/release
-          cat > vendor/google/release/release_config_map.textproto << 'EOF'
-          format_version: 1
-          default_containers: "vendor/google/release"
-          EOF
-          mkdir -p vendor/google/release/build_flags
-          cat > vendor/google/release/build_flags/all_flags.textproto << 'EOF'
-          EOF
-          mkdir -p vendor/google/release/releases
-          cat > vendor/google/release/releases/ap1a.textproto << 'EOF'
-          name: "ap1a"
-          EOF
+          python3 -c "
+          import os
+          os.makedirs('vendor/google/release/build_flags', exist_ok=True)
+          os.makedirs('vendor/google/release/releases', exist_ok=True)
+          open('vendor/google/release/release_config_map.textproto', 'w').write('format_version: 1\ndefault_containers: \"vendor/google/release\"\n')
+          open('vendor/google/release/build_flags/all_flags.textproto', 'w').write('')
+          open('vendor/google/release/releases/ap1a.textproto', 'w').write('name: \"ap1a\"\n')
+          print('Release config stub created')
+          "
+          cat vendor/google/release/release_config_map.textproto
           echo "=== 2. Lunch ==="
           lunch aosp_arm64-ap1a-user
           echo "=== 3. Check m exists ==="
