@@ -132,6 +132,7 @@ jobs:
             external/zstd \
             external/expat \
             external/starlark-go \
+            vendor/google/release \
             libnativehelper
 
       - name: Build external camera HAL
@@ -140,7 +141,7 @@ jobs:
           echo "=== 1. Source envsetup ==="
           source build/envsetup.sh
           echo "=== 2. Lunch ==="
-          lunch aosp_arm64-trunk_staging-user
+          lunch aosp_arm64-ap1a-user
           echo "=== 3. Check m exists ==="
           type m
           echo "=== 4. Run build ==="
