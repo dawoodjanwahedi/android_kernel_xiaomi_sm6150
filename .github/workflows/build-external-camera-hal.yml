@@ -43,7 +43,7 @@ jobs:
           mkdir -p ~/aosp && cd ~/aosp
           repo init \
             -u https://android.googlesource.com/platform/manifest \
-            -b android-14.0.0_r67 \
+            -b android-13.0.0_r82 \
             --depth=1 \
             --partial-clone \
             --clone-filter=blob:limit=10M
@@ -87,27 +87,8 @@ jobs:
         run: |
           cd ~/aosp
           source build/envsetup.sh
-
-          python3 -c "
-          import os
-          os.makedirs('vendor/google/release/build_flags', exist_ok=True)
-          os.makedirs('vendor/google/release/releases', exist_ok=True)
-          open('vendor/google/release/release_config_map.textproto', 'w').write('format_version: 1\ndefault_containers: \"vendor/google/release\"\n')
-          open('vendor/google/release/build_flags/all_flags.textproto', 'w').write('')
-          open('vendor/google/release/releases/ap1a.textproto', 'w').write('name: \"ap1a\"\n')
-          print('Release config created')
-          "
-          echo "=== Release config map ==="
-          cat vendor/google/release/release_config_map.textproto
-          echo "=== ap1a textproto ==="
-          cat vendor/google/release/releases/ap1a.textproto
-          echo "=== build/make release configs ==="
-          find build/make -name "release_config*" 2>/dev/null | head -20
-          find build/make -name "*.textproto" 2>/dev/null | head -20
-          echo "=== trying lunch with ap1a ==="
-          lunch aosp_arm64-ap1a-user 2>&1 || true
-          echo "=== lunch help ==="
-          lunch --help 2>&1 | head -20 || true
+          lunch aosp_arm64-userdebug
+          m android.hardware.camera.provider@2.7-external-service -j8
 
       - name: Collect and package
         run: |
