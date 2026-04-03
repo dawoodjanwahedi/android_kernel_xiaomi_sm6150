@@ -28,7 +28,11 @@ jobs:
         run: |
           GSI_URL="https://sourceforge.net/projects/andyyan-gsi/files/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz/download"
           echo "Downloading from: $GSI_URL"
-          wget --no-check-certificate -q "$GSI_URL" -O lineage20.img.gz
+          curl -L --retry 3 --retry-delay 5 \
+            "https://sourceforge.net/projects/andyyan-gsi/files/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz/download" \
+            -o lineage20.img.gz \
+            -A "Mozilla/5.0" \
+            --max-time 600
           echo "Download exit code: $?"
           ls -lh lineage20.img.gz
           gunzip lineage20.img.gz
