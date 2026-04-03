@@ -116,19 +116,19 @@ jobs:
           cd ~/aosp
           source build/envsetup.sh
 
-          # Disable problematic hardware interface modules that have missing deps
-          # by creating stub Android.bp files
+          # Stub out all Android.bp files in problematic directories
           for dir in \
             hardware/interfaces/automotive \
             hardware/interfaces/neuralnetworks \
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
-            packages/modules/NeuralNetworks; do
-            if [ -f "$dir/Android.bp" ]; then
-              echo "// disabled" > "$dir/Android.bp"
-              echo "Disabled $dir/Android.bp"
-            fi
+            packages/modules/NeuralNetworks \
+            packages/modules/common; do
+            find "$dir" -name "Android.bp" 2>/dev/null | while read f; do
+              echo "// disabled" > "$f"
+              echo "Disabled $f"
+            done
           done
 
           lunch aosp_arm64-userdebug
