@@ -63,11 +63,6 @@ jobs:
             hardware/libhardware \
             frameworks/av \
             frameworks/native \
-            frameworks/hardware/interfaces \
-            hardware/interfaces/camera \
-            hardware/interfaces/graphics/common \
-            hardware/interfaces/graphics/mapper \
-            hardware/interfaces/media \
             system/core \
             system/tools/aidl \
             system/tools/hidl \
