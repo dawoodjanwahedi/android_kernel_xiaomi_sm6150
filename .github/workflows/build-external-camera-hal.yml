@@ -63,6 +63,11 @@ jobs:
             hardware/libhardware \
             frameworks/av \
             frameworks/native \
+            frameworks/hardware/interfaces \
+            hardware/interfaces/camera \
+            hardware/interfaces/graphics/common \
+            hardware/interfaces/graphics/mapper \
+            hardware/interfaces/media \
             system/core \
             system/tools/aidl \
             system/tools/hidl \
@@ -88,6 +93,16 @@ jobs:
             external/boringssl \
             external/go-cmp \
             external/golang-protobuf \
+            external/grpc-grpc \
+            external/grpc-grpc-java \
+            external/mdnsresponder \
+            external/minijail \
+            external/tinyxml2 \
+            external/toybox \
+            external/fmtlib \
+            external/jsoncpp \
+            external/libyuv \
+            external/libjpeg-turbo \
             external/protobuf \
             external/lz4 \
             external/zlib \
@@ -101,7 +116,7 @@ jobs:
           cd ~/aosp
           source build/envsetup.sh
           lunch aosp_arm64-userdebug
-          m android.hardware.camera.provider@2.7-external-service -j8
+          m android.hardware.camera.provider@2.7-external-service -j4
 
       - name: Collect and package
         run: |
