@@ -127,7 +127,6 @@ jobs:
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
             system/core/init \
-            art/build \
             art/test \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
@@ -136,6 +135,12 @@ jobs:
               echo "// disabled" > "$f"
               echo "Disabled $f"
             done
+          done
+
+          # Stub only art/build/boot to remove missing frameworks/base dependency
+          find art/build/boot -name "Android.bp" 2>/dev/null | while read f; do
+            echo "// disabled" > "$f"
+            echo "Disabled $f"
           done
 
           # stub only frameworks/av/apex which has missing q-launched-apex-module dep
