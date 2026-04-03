@@ -127,6 +127,8 @@ jobs:
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
             system/core/init \
+            art/build \
+            art/test \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
             libnativehelper/tests_mts; do
