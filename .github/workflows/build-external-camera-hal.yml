@@ -63,6 +63,7 @@ jobs:
             hardware/libhardware \
             frameworks/av \
             frameworks/native \
+            frameworks/base/tools/xsdc \
             system/core \
             system/tools/aidl \
             system/tools/hidl \
@@ -104,6 +105,7 @@ jobs:
             external/zlib \
             external/zstd \
             external/expat \
+            external/libxml2 \
             external/starlark-go \
             libnativehelper
 
