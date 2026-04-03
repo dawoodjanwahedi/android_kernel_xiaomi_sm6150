@@ -63,7 +63,7 @@ jobs:
             hardware/libhardware \
             frameworks/av \
             frameworks/native \
-            frameworks/base/tools/xsdc \
+            system/tools/xsdc \
             system/core \
             system/tools/aidl \
             system/tools/hidl \
