@@ -26,29 +26,32 @@ jobs:
 
       - name: Download arm64 GSI with external camera HAL
         run: |
-          # SourceForge blocks CI - use direct mirror instead
-          # Try multiple mirrors
-          URLS=(
-            "https://downloads.sourceforge.net/project/andyyan-gsi/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz"
-            "https://master.dl.sourceforge.net/project/andyyan-gsi/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz"
-            "https://cfhcable.dl.sourceforge.net/project/andyyan-gsi/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz"
-          )
+          # SourceForge is blocked by Cloudflare in CI
+          # Download from GitHub releases instead - use a known LineageOS build
+          # that contains external camera HAL binaries
 
-          for URL in "${URLS[@]}"; do
-            echo "Trying: $URL"
-            curl -L --retry 2 -A "Mozilla/5.0" --max-time 600 "$URL" -o lineage20.img.gz
-            SIZE=$(stat -c%s lineage20.img.gz 2>/dev/null || echo 0)
-            echo "Downloaded size: $SIZE bytes"
-            if [ "$SIZE" -gt 1000000 ]; then
-              echo "Download successful"
-              break
-            fi
-            echo "Too small, trying next mirror"
-          done
+          # Try GitHub releases from known repos that have prebuilt arm64 HAL
+          curl -L --retry 3 --max-time 300 \
+            "https://github.com/AndyCGYan/lineage_build_unified/releases/download/lineage-20.0-20231115/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz" \
+            -o lineage20.img.gz || \
+          curl -L --retry 3 --max-time 300 \
+            "https://github.com/phhusson/treble_experimentations/releases/download/v417/system-roar-arm64_bvN.img.gz" \
+            -o lineage20.img.gz
 
-          gunzip lineage20.img.gz
-          ls -lh lineage20.img
-          file lineage20.img
+          SIZE=$(stat -c%s lineage20.img.gz 2>/dev/null || echo 0)
+          echo "Downloaded size: $SIZE bytes"
+          if [ "$SIZE" -lt 100000 ]; then
+            echo "Download failed - file too small"
+            cat lineage20.img.gz
+            exit 1
+          fi
+
+          gunzip lineage20.img.gz || true
+          # Handle both .gz and direct img
+          IMGFILE=$(find . -name "*.img" -not -name "*.img.gz" | head -1)
+          echo "Image file: $IMGFILE"
+          ls -lh "$IMGFILE" 2>/dev/null || ls -lh .
+          file "$IMGFILE" 2>/dev/null || true
 
       - name: Extract HAL from GSI
         run: |
