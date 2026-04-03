@@ -71,6 +71,7 @@ jobs:
             system/libbase \
             system/libfmq \
             system/libvintf \
+            system/libkernelconfigs \
             prebuilts/clang/host/linux-x86 \
             prebuilts/build-tools \
             prebuilts/go/linux-x86 \
@@ -111,7 +112,7 @@ jobs:
           cd ~/aosp
           source build/envsetup.sh
           lunch aosp_arm64-userdebug
-          m android.hardware.camera.provider@2.7-external-service -j4
+          m android.hardware.camera.provider@2.7-external-service android.hardware.camera.provider@2.7-impl -j4
 
       - name: Collect and package
         run: |
