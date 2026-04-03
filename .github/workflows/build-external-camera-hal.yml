@@ -24,228 +24,55 @@ jobs:
           chmod a+x ~/.local/bin/repo
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Check disk space
-        run: df -h && echo "Free space above"
-
-      - name: Configure git
+      - name: Download AOSP system image with external camera HAL
         run: |
-          git config --global user.email "ci@build.com"
-          git config --global user.name "CI Build"
+          # Download Android 14 x86_64 system image which contains prebuilt camera HAL
+          wget -q "https://dl.google.com/android/repository/sys-img/android/x86_64-34_r01.zip" -O sysimg.zip
+          unzip -q sysimg.zip
+          ls -la
 
-      - name: Repo init AOSP android-16.0.0_r1
+      - name: Extract HAL from system image
         run: |
-          mkdir aosp && cd aosp
-          repo init \
-            -u https://android.googlesource.com/platform/manifest \
-            -b android-16.0.0_r1 \
-            --depth=1 \
-            --partial-clone \
-            --clone-filter=blob:limit=10M
+          # Find and mount the system image
+          SYSIMG=$(find . -name "system.img" | head -1)
+          echo "Found: $SYSIMG"
+          sudo mkdir -p /mnt/sysimg
+          sudo mount -o loop,ro "$SYSIMG" /mnt/sysimg
 
-      - name: Validate sync paths
-        run: |
-          cd aosp
-          # List all available projects to verify paths exist
-          repo list 2>/dev/null | awk '{print $1}' > /tmp/available_projects.txt
-          echo "Total available projects: $(wc -l < /tmp/available_projects.txt)"
+          # Find external camera HAL
+          find /mnt/sysimg -name "*external*camera*" 2>/dev/null
+          find /mnt/sysimg -name "*camera*provider*V1*" 2>/dev/null
 
-          PATHS=(
-            "hardware/interfaces"
-            "hardware/libhardware"
-            "frameworks/av"
-            "frameworks/native"
-            "system/core"
-            "system/libhidl"
-            "system/logging"
-            "system/libbase"
-            "system/libfmq"
-            "prebuilts/clang/host/linux-x86"
-            "prebuilts/build-tools"
-            "prebuilts/go/linux-x86"
-            "prebuilts/cmake/linux-x86"
-            "prebuilts/ninja/linux-x86"
-            "prebuilts/jdk/jdk21"
-            "build/soong"
-            "build/make"
-            "build/blueprint"
-            "external/libcxx"
-            "external/libcxxabi"
-            "external/fmtlib"
-            "external/googletest"
-            "external/boringssl"
-            "external/protobuf"
-            "external/libnl"
-            "external/gtest"
-            "external/zlib"
-            "external/zstd"
-            "external/expat"
-            "external/lz4"
-            "system/tools/aidl"
-            "system/tools/hidl"
-            "libnativehelper"
-          )
+          # Copy files
+          mkdir -p module_tmp/system/vendor/bin/hw
+          mkdir -p module_tmp/system/vendor/etc/init
+          mkdir -p module_tmp/system/vendor/etc
+          mkdir -p module_tmp/META-INF/com/google/android
 
-          VALID=""
-          INVALID=""
-          for p in "${PATHS[@]}"; do
-            if grep -q "^$p " /tmp/available_projects.txt; then
-              VALID="$VALID $p"
-            else
-              INVALID="$INVALID\n  MISSING: $p"
-            fi
-          done
-
-          echo "=== MISSING PROJECTS ==="
-          echo -e "$INVALID"
-          echo "=== ALL VALID ==="
-          echo "$VALID"
-
-      - name: Repo sync AOSP
-        run: |
-          cd aosp
-          repo sync -j4 --fail-fast --no-tags --no-clone-bundle \
-            hardware/interfaces \
-            hardware/libhardware \
-            frameworks/av \
-            frameworks/native \
-            system/core \
-            system/tools/aidl \
-            system/tools/hidl \
-            system/libhidl \
-            system/logging \
-            system/libbase \
-            system/libfmq \
-            prebuilts/clang/host/linux-x86 \
-            prebuilts/build-tools \
-            prebuilts/go/linux-x86 \
-            build/soong \
-            build/make \
-            build/blueprint \
-            external/libcxx \
-            external/libcxxabi \
-            external/googletest \
-            external/boringssl \
-            external/golang-protobuf \
-            external/protobuf \
-            external/lz4 \
-            external/zlib \
-            external/zstd \
-            external/expat \
-            external/starlark-go \
-            libnativehelper
-
-      - name: Build external camera HAL
-        run: |
-          cd aosp
-          echo "=== 1. Source envsetup ==="
-          source build/envsetup.sh
-          # Create minimal release config to replace private vendor/google/release
-          python3 -c "
-          import os
-          os.makedirs('vendor/google/release/build_flags', exist_ok=True)
-          os.makedirs('vendor/google/release/releases', exist_ok=True)
-          open('vendor/google/release/release_config_map.textproto', 'w').write('format_version: 1\ndefault_containers: \"vendor/google/release\"\n')
-          open('vendor/google/release/build_flags/all_flags.textproto', 'w').write('')
-          open('vendor/google/release/releases/ap1a.textproto', 'w').write('name: \"ap1a\"\n')
-          print('Release config stub created')
-          "
-          cat vendor/google/release/release_config_map.textproto
-          echo "=== 2. Lunch ==="
-          lunch aosp_arm64-ap1a-user
-          echo "=== 3. Check m exists ==="
-          type m
-          echo "=== 4. Run build ==="
-          m android.hardware.camera.provider-V1-external-service -j4
-          echo "=== 5. Find output ==="
-          find out -name "*camera*provider*" 2>/dev/null
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/build.log
-
-      - name: Collect outputs
-        run: |
-          cd aosp
-          SERVICE=$(find out -name "android.hardware.camera.provider-V1-external-service" -type f | head -1)
-          if [ -z "$SERVICE" ]; then
-            echo "ERROR: binary not found"
+          HAL=$(find /mnt/sysimg -name "*camera*provider*external*" -o -name "*external*camera*service*" 2>/dev/null | head -1)
+          if [ -n "$HAL" ]; then
+            cp "$HAL" module_tmp/system/vendor/bin/hw/
+            echo "Copied: $HAL"
+          else
+            echo "HAL not found, listing camera files:"
+            find /mnt/sysimg -name "*camera*" 2>/dev/null | head -30
             exit 1
           fi
-          mkdir -p module_tmp/system/vendor/bin/hw
-          cp "$SERVICE" module_tmp/system/vendor/bin/hw/
-          echo "Binary collected: $(ls -lh module_tmp/system/vendor/bin/hw/)"
 
       - name: Create module files
         run: |
-          set -euo pipefail
-
           mkdir -p module_tmp/system/vendor/etc/init
           mkdir -p module_tmp/META-INF/com/google/android
 
-          cat > module_tmp/system/vendor/etc/external_camera_config.xml << 'EOF'
-          <ExternalCamera>
-              <Provider>
-                  <ignore>
-                      <id>0</id>
-                      <id>1</id>
-                      <id>2</id>
-                      <id>3</id>
-                  </ignore>
-              </Provider>
-              <Device>
-                  <MaxJpegBufferSize bytes="33554432"/>
-                  <NumVideoBuffers>4</NumVideoBuffers>
-                  <NumStillBuffers>2</NumStillBuffers>
-                  <FpsLimits>
-                      <FpsLimit>
-                          <size width="1280" height="720"/>
-                          <fpsUpperBound>30</fpsUpperBound>
-                      </FpsLimit>
-                  </FpsLimits>
-                  <MinimumStreamSize width="640" height="480"/>
-              </Device>
-          </ExternalCamera>
-          EOF
+          printf '<ExternalCamera>\n    <Provider>\n        <ignore><id>0</id><id>1</id><id>2</id><id>3</id></ignore>\n    </Provider>\n    <Device>\n        <MaxJpegBufferSize bytes="33554432"/>\n        <NumVideoBuffers count="4"/>\n        <NumStillBuffers count="2"/>\n    </Device>\n</ExternalCamera>\n' > module_tmp/system/vendor/etc/external_camera_config.xml
 
-            cat > module_tmp/system/vendor/etc/init/android.hardware.camera.provider-V1-external.rc << 'EOF'
-            service vendor.camera.provider2_7_ext /vendor/bin/hw/android.hardware.camera.provider-V1-external-service
-              class hal
-              user cameraserver
-              group audio camera input drmrpc
-              ioprio rt 4
-              capabilities SYS_NICE
-              onrestart restart cameraserver
-          EOF
+          printf 'service vendor.camera.ext /vendor/bin/hw/android.hardware.camera.provider-V1-external-service\n    class hal\n    user cameraserver\n    group audio camera input drmrpc\n    ioprio rt 4\n    capabilities SYS_NICE\n    onrestart restart cameraserver\n' > module_tmp/system/vendor/etc/init/android.hardware.camera.provider-V1-external.rc
 
-          cat > module_tmp/module.prop << 'EOF'
-          id=external-camera-hal
-          name=External Camera HAL v2.7
-          version=v1
-          versionCode=1
-          author=dawoodjanwahedi
-          description=External Camera HAL for v4l2loopback on LineageOS 23.2
-          EOF
+          printf 'id=external-camera-hal\nname=External Camera HAL V1\nversion=v1\nversionCode=1\nauthor=dawoodjanwahedi\ndescription=External Camera HAL for v4l2loopback\n' > module_tmp/module.prop
 
-          cat > module_tmp/META-INF/com/google/android/updater-script << 'EOF'
-          #MAGISK
-          EOF
+          printf '#MAGISK\n' > module_tmp/META-INF/com/google/android/updater-script
 
-          cat > module_tmp/META-INF/com/google/android/update-binary << 'EOF'
-          #!/sbin/sh
-          umask 022
-          ui_print() { echo "$1"; }
-          OUTFD=$2
-          ZIPFILE=$3
-          ui_print "*******************************"
-          ui_print " External Camera HAL v2.7 "
-          ui_print "*******************************"
-          unzip -o "$ZIPFILE" 'system/*' -d /
-          ui_print "Install complete"
-          exit 0
-          EOF
+          printf '#!/sbin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" '"'"'system/*'"'"' -d "$MODPATH"\nset_perm_recursive "$MODPATH/system/vendor/bin/hw" root shell 0755 0755\n' > module_tmp/META-INF/com/google/android/update-binary
           chmod 0755 module_tmp/META-INF/com/google/android/update-binary
 
       - name: Package Magisk module
