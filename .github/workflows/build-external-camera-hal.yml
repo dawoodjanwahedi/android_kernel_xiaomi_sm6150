@@ -42,6 +42,7 @@ jobs:
         run: |
           echo "Cleaning previous AOSP directory..."
           rm -rf ~/aosp
+          rm -rf ~/.repo
           echo "Done, disk space:"
           df -h ~
 
