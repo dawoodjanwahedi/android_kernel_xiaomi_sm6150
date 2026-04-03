@@ -86,6 +86,7 @@ jobs:
             external/libcxxabi \
             external/googletest \
             external/boringssl \
+            external/go-cmp \
             external/golang-protobuf \
             external/protobuf \
             external/lz4 \
