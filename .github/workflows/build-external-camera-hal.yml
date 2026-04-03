@@ -125,12 +125,17 @@ jobs:
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
             packages/modules/NeuralNetworks \
-            packages/modules/common \
             libnativehelper/tests_mts; do
             find "$dir" -name "Android.bp" 2>/dev/null | while read f; do
               echo "// disabled" > "$f"
               echo "Disabled $f"
             done
+          done
+
+          # stub only frameworks/av/apex which has missing q-launched-apex-module dep
+          find frameworks/av/apex -name "Android.bp" 2>/dev/null | while read f; do
+            echo "// disabled" > "$f"
+            echo "Disabled $f"
           done
 
           lunch aosp_arm64-userdebug
