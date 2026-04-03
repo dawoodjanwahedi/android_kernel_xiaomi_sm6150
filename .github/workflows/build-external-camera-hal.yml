@@ -33,36 +33,35 @@ jobs:
 
       - name: Extract HAL from system image
         run: |
-          # Install tools for sparse image
-          sudo apt-get install -y android-sdk-libsparse-utils erofs-utils || true
-
-          # Convert sparse to raw if needed
           SYSIMG=$(find . -name "system.img" | head -1)
           echo "Found: $SYSIMG"
           file "$SYSIMG"
 
-          # Try simg2img first (sparse format)
-          if command -v simg2img &>/dev/null; then
-            simg2img "$SYSIMG" system_raw.img 2>/dev/null || cp "$SYSIMG" system_raw.img
-          else
-            cp "$SYSIMG" system_raw.img
-          fi
+          # It's a GPT disk image - find partition offset
+          sudo apt-get install -y kpartx
+          sudo kpartx -av "$SYSIMG"
+          lsblk
 
+          # Mount the first partition
           sudo mkdir -p /mnt/sysimg
-          # Try ext4 mount
-          sudo mount -o loop,ro system_raw.img /mnt/sysimg 2>/dev/null || \
-          # Try erofs mount  
-          sudo mount -t erofs -o loop,ro system_raw.img /mnt/sysimg 2>/dev/null || \
-          # Try with fstype auto
-          sudo mount -o loop,ro,fstype=auto system_raw.img /mnt/sysimg 2>/dev/null || \
-          { echo "All mount attempts failed"; file system_raw.img; exit 1; }
+          LOOPDEV=$(sudo losetup -j "$SYSIMG" | cut -d: -f1 | head -1)
+          echo "Loop device: $LOOPDEV"
 
-          echo "Mount successful, listing contents:"
-          ls /mnt/sysimg/
+          # Try mounting each partition
+          for i in 1 2 3 4; do
+            PART="${LOOPDEV}p${i}"
+            echo "Trying $PART"
+            sudo mount -o ro "$PART" /mnt/sysimg 2>/dev/null && echo "Mounted $PART" && break
+            sudo mount -t erofs -o ro "$PART" /mnt/sysimg 2>/dev/null && echo "Mounted erofs $PART" && break
+          done
 
-          # Find external camera HAL
+          echo "=== Mount contents ==="
+          ls /mnt/sysimg/ || echo "Mount failed"
+
+          echo "=== Looking for camera HAL ==="
+          find /mnt/sysimg -name "*camera*external*" 2>/dev/null
           find /mnt/sysimg -name "*external*camera*" 2>/dev/null
-          find /mnt/sysimg -name "*camera*provider*V1*" 2>/dev/null
+          find /mnt/sysimg -name "*camera*provider*" 2>/dev/null | head -20
 
           # Copy files
           mkdir -p module_tmp/system/vendor/bin/hw
