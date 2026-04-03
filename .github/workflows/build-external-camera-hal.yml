@@ -26,32 +26,21 @@ jobs:
 
       - name: Download arm64 GSI with external camera HAL
         run: |
-          # SourceForge is blocked by Cloudflare in CI
-          # Download from GitHub releases instead - use a known LineageOS build
-          # that contains external camera HAL binaries
+          curl -L --retry 3 --max-time 600 \
+            "https://github.com/phhusson/treble_experimentations/releases/download/v416/system-squeak-arm64-ab-vanilla.img.xz" \
+            -o gsi.img.xz
 
-          # Try GitHub releases from known repos that have prebuilt arm64 HAL
-          curl -L --retry 3 --max-time 300 \
-            "https://github.com/AndyCGYan/lineage_build_unified/releases/download/lineage-20.0-20231115/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz" \
-            -o lineage20.img.gz || \
-          curl -L --retry 3 --max-time 300 \
-            "https://github.com/phhusson/treble_experimentations/releases/download/v417/system-roar-arm64_bvN.img.gz" \
-            -o lineage20.img.gz
-
-          SIZE=$(stat -c%s lineage20.img.gz 2>/dev/null || echo 0)
+          SIZE=$(stat -c%s gsi.img.xz 2>/dev/null || echo 0)
           echo "Downloaded size: $SIZE bytes"
           if [ "$SIZE" -lt 100000 ]; then
-            echo "Download failed - file too small"
-            cat lineage20.img.gz
+            echo "Download failed"
             exit 1
           fi
 
-          gunzip lineage20.img.gz || true
-          # Handle both .gz and direct img
-          IMGFILE=$(find . -name "*.img" -not -name "*.img.gz" | head -1)
-          echo "Image file: $IMGFILE"
-          ls -lh "$IMGFILE" 2>/dev/null || ls -lh .
-          file "$IMGFILE" 2>/dev/null || true
+          echo "Extracting..."
+          xz -d gsi.img.xz
+          ls -lh gsi.img
+          file gsi.img
 
       - name: Extract HAL from GSI
         run: |
@@ -59,9 +48,9 @@ jobs:
 
           # Mount the GSI
           sudo mkdir -p /mnt/gsi
-          sudo mount -o loop,ro lineage20.img /mnt/gsi 2>/dev/null || \
-          sudo mount -t erofs -o loop,ro lineage20.img /mnt/gsi 2>/dev/null || \
-          { echo "Mount failed"; file lineage20.img; exit 1; }
+          sudo mount -o loop,ro gsi.img /mnt/gsi 2>/dev/null || \
+          sudo mount -t erofs -o loop,ro gsi.img /mnt/gsi 2>/dev/null || \
+          { echo "Mount failed"; file gsi.img; exit 1; }
 
           echo "=== GSI contents ==="
           ls /mnt/gsi/
