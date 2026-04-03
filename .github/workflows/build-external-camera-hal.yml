@@ -23,99 +23,147 @@ jobs:
           chmod a+x ~/.local/bin/repo
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Download arm64 GSI with external camera HAL
+      - name: Install AOSP build dependencies
         run: |
-          curl -L --retry 3 --max-time 600 \
-            "https://github.com/phhusson/treble_experimentations/releases/download/v416/system-squeak-arm64-ab-vanilla.img.xz" \
-            -o gsi.img.xz
+          sudo apt-get install -y \
+            git-core gnupg flex bison build-essential zip curl zlib1g-dev \
+            libc6-dev-i386 libncurses-dev x11proto-core-dev libx11-dev \
+            lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip \
+            fontconfig python3 python3-pip openjdk-17-jdk repo \
+            libssl-dev bc rsync ccache
 
-          SIZE=$(stat -c%s gsi.img.xz 2>/dev/null || echo 0)
-          echo "Downloaded size: $SIZE bytes"
-          if [ "$SIZE" -lt 100000 ]; then
-            echo "Download failed"
+      - name: Configure git
+        run: |
+          git config --global user.email "ci@build.com"
+          git config --global user.name "CI Build"
+          git config --global color.ui false
+
+      - name: Repo init AOSP android-14.0.0_r67
+        run: |
+          mkdir -p ~/aosp && cd ~/aosp
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android-14.0.0_r67 \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M
+
+      - name: Repo sync
+        run: |
+          cd ~/aosp
+          repo sync -j8 --no-tags --no-clone-bundle \
+            hardware/interfaces \
+            hardware/libhardware \
+            frameworks/av \
+            frameworks/native \
+            system/core \
+            system/tools/aidl \
+            system/tools/hidl \
+            system/libhidl \
+            system/logging \
+            system/libbase \
+            system/libfmq \
+            prebuilts/clang/host/linux-x86 \
+            prebuilts/build-tools \
+            prebuilts/go/linux-x86 \
+            build/soong \
+            build/make \
+            build/blueprint \
+            external/libcxx \
+            external/libcxxabi \
+            external/googletest \
+            external/boringssl \
+            external/golang-protobuf \
+            external/protobuf \
+            external/lz4 \
+            external/zlib \
+            external/zstd \
+            external/expat \
+            external/starlark-go \
+            libnativehelper
+
+      - name: Build external camera HAL
+        run: |
+          cd ~/aosp
+          source build/envsetup.sh
+
+          python3 -c "
+          import os
+          os.makedirs('vendor/google/release/build_flags', exist_ok=True)
+          os.makedirs('vendor/google/release/releases', exist_ok=True)
+          open('vendor/google/release/release_config_map.textproto', 'w').write('format_version: 1\ndefault_containers: \"vendor/google/release\"\n')
+          open('vendor/google/release/build_flags/all_flags.textproto', 'w').write('')
+          open('vendor/google/release/releases/ap1a.textproto', 'w').write('name: \"ap1a\"\n')
+          print('Release config created')
+          "
+          lunch aosp_arm64-ap1a-user
+          m android.hardware.camera.provider@2.7-external-service -j8
+
+      - name: Collect and package
+        run: |
+          cd ~/aosp
+          SERVICE=$(find out -name "android.hardware.camera.provider@2.7-external-service" -type f | head -1)
+          IMPL=$(find out -name "android.hardware.camera.provider@2.7-impl.so" -type f | head -1)
+
+          if [ -z "$SERVICE" ]; then
+            echo "ERROR: binary not found"
+            find out -name "*camera*external*" 2>/dev/null
             exit 1
           fi
 
-          echo "Extracting..."
-          xz -d gsi.img.xz
-          ls -lh gsi.img
-          file gsi.img
+          mkdir -p ~/module_tmp/system/vendor/bin/hw
+          mkdir -p ~/module_tmp/system/vendor/lib64/hw
+          mkdir -p ~/module_tmp/system/vendor/etc/init
+          mkdir -p ~/module_tmp/META-INF/com/google/android
 
-      - name: Extract HAL from GSI
-        run: |
-          sudo apt-get install -y erofs-utils
+          cp "$SERVICE" ~/module_tmp/system/vendor/bin/hw/
+          [ -n "$IMPL" ] && cp "$IMPL" ~/module_tmp/system/vendor/lib64/hw/
 
-          # Mount the GSI
-          sudo mkdir -p /mnt/gsi
-          sudo mount -o loop,ro gsi.img /mnt/gsi 2>/dev/null || \
-          sudo mount -t erofs -o loop,ro gsi.img /mnt/gsi 2>/dev/null || \
-          { echo "Mount failed"; file gsi.img; exit 1; }
+          python3 -c "
+            import os
+            base = os.path.expanduser('~/module_tmp')
+            open(f'{base}/system/vendor/etc/external_camera_config.xml','w').write('''<ExternalCamera>
+              <Provider><ignore><id>0</id><id>1</id><id>2</id><id>3</id></ignore></Provider>
+              <Device>
+                <MaxJpegBufferSize bytes=\"33554432\"/>
+                <NumVideoBuffers count=\"4\"/>
+                <NumStillBuffers count=\"2\"/>
+                <FpsLimits><FpsLimit><size width=\"1280\" height=\"720\"/><fpsUpperBound>30.0</fpsUpperBound></FpsLimit></FpsLimits>
+                <MinimumStreamSize width=\"640\" height=\"480\"/>
+              </Device>
+            </ExternalCamera>
+            ''')
+            open(f'{base}/system/vendor/etc/init/android.hardware.camera.provider@2.7-external.rc','w').write('''service vendor.camera.provider2_7_ext /vendor/bin/hw/android.hardware.camera.provider@2.7-external-service
+              class hal
+              user cameraserver
+              group audio camera input drmrpc
+              ioprio rt 4
+              capabilities SYS_NICE
+              onrestart restart cameraserver
+            ''')
+            open(f'{base}/module.prop','w').write('''id=external-camera-hal
+            name=External Camera HAL v2.7
+            version=v1
+            versionCode=1
+            author=dawoodjanwahedi
+            description=External Camera HAL for v4l2loopback on LineageOS 23.2
+            ''')
+            open(f'{base}/META-INF/com/google/android/updater-script','w').write('#MAGISK\n')
+            open(f'{base}/META-INF/com/google/android/update-binary','w').write('''#!/sbin/sh
+            SKIPUNZIP=1
+            unzip -o \"\$ZIPFILE\" 'system/*' -d \"\$MODPATH\"
+            set_perm_recursive \"\$MODPATH/system/vendor/bin/hw\" root shell 0755 0755
+            ''')
+            os.chmod(f'{base}/META-INF/com/google/android/update-binary', 0o755)
+            print('Module files created')
+            "
 
-          echo "=== GSI contents ==="
-          ls /mnt/gsi/
+          cd ~/module_tmp
+          zip -r ~/external-camera-hal-magisk.zip .
+          echo "Done: $(ls -lh ~/external-camera-hal-magisk.zip)"
 
-          echo "=== Looking for external camera HAL ==="
-          echo "=== All camera files ==="
-          find /mnt/gsi -name "*camera*" 2>/dev/null | head -40
-          echo "=== Vendor bin hw contents ==="
-          ls /mnt/gsi/vendor/bin/hw/ 2>/dev/null | head -30
-          echo "=== Vendor lib64 hw contents ==="
-          ls /mnt/gsi/vendor/lib64/hw/ 2>/dev/null | head -30
-          echo "=== System vendor bin hw ==="
-          ls /mnt/gsi/system/vendor/bin/hw/ 2>/dev/null | head -30
-          find /mnt/gsi -name "*external*camera*" 2>/dev/null
-          find /mnt/gsi -name "*camera*provider*2.7*" 2>/dev/null
-          find /mnt/gsi -name "*camera*provider*" 2>/dev/null | grep -i external | head -10
-
-          # Copy HAL files
-          mkdir -p module_tmp/system/vendor/bin/hw
-          mkdir -p module_tmp/system/vendor/lib64/hw
-          mkdir -p module_tmp/system/vendor/etc/init
-          mkdir -p module_tmp/system/vendor/etc
-          mkdir -p module_tmp/META-INF/com/google/android
-
-          SERVICE=$(find /mnt/gsi -name "*camera*provider*2.7*external*service*" -o -name "*external*camera*provider*service*" 2>/dev/null | head -1)
-          IMPL=$(find /mnt/gsi -name "*camera*provider*2.7*impl*" 2>/dev/null | head -1)
-
-          if [ -n "$SERVICE" ]; then
-            cp "$SERVICE" module_tmp/system/vendor/bin/hw/
-            echo "Copied service: $SERVICE"
-          else
-            echo "Service not found"
-            find /mnt/gsi -name "*camera*" 2>/dev/null | head -30
-            exit 0
-          fi
-
-          if [ -n "$IMPL" ]; then
-            cp "$IMPL" module_tmp/system/vendor/lib64/hw/
-            echo "Copied impl: $IMPL"
-          fi
-
-      - name: Create module files
-        run: |
-          mkdir -p module_tmp/system/vendor/etc/init
-          mkdir -p module_tmp/META-INF/com/google/android
-
-          printf '<ExternalCamera>\n    <Provider>\n        <ignore><id>0</id><id>1</id><id>2</id><id>3</id></ignore>\n    </Provider>\n    <Device>\n        <MaxJpegBufferSize bytes="33554432"/>\n        <NumVideoBuffers count="4"/>\n        <NumStillBuffers count="2"/>\n    </Device>\n</ExternalCamera>\n' > module_tmp/system/vendor/etc/external_camera_config.xml
-
-          printf 'service vendor.camera.ext /vendor/bin/hw/android.hardware.camera.provider-V1-external-service\n    class hal\n    user cameraserver\n    group audio camera input drmrpc\n    ioprio rt 4\n    capabilities SYS_NICE\n    onrestart restart cameraserver\n' > module_tmp/system/vendor/etc/init/android.hardware.camera.provider-V1-external.rc
-
-          printf 'id=external-camera-hal\nname=External Camera HAL V1\nversion=v1\nversionCode=1\nauthor=dawoodjanwahedi\ndescription=External Camera HAL for v4l2loopback\n' > module_tmp/module.prop
-
-          printf '#MAGISK\n' > module_tmp/META-INF/com/google/android/updater-script
-
-          printf '#!/sbin/sh\nSKIPUNZIP=1\nunzip -o "$ZIPFILE" '"'"'system/*'"'"' -d "$MODPATH"\nset_perm_recursive "$MODPATH/system/vendor/bin/hw" root shell 0755 0755\n' > module_tmp/META-INF/com/google/android/update-binary
-          chmod 0755 module_tmp/META-INF/com/google/android/update-binary
-
-      - name: Package Magisk module
-        run: |
-          cd module_tmp
-          zip -r ../external-camera-hal-magisk.zip .
-          cd ..
-          ls -lh external-camera-hal-magisk.zip
-
-      - name: Upload module artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: external-camera-hal-magisk
-          path: external-camera-hal-magisk.zip
+          path: ~/external-camera-hal-magisk.zip
