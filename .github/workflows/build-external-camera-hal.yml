@@ -107,6 +107,7 @@ jobs:
             external/expat \
             external/libxml2 \
             external/starlark-go \
+            packages/modules/common \
             packages/modules/NeuralNetworks \
             libnativehelper
 
