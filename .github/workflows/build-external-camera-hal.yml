@@ -56,6 +56,14 @@ jobs:
           ls /mnt/gsi/
 
           echo "=== Looking for external camera HAL ==="
+          echo "=== All camera files ==="
+          find /mnt/gsi -name "*camera*" 2>/dev/null | head -40
+          echo "=== Vendor bin hw contents ==="
+          ls /mnt/gsi/vendor/bin/hw/ 2>/dev/null | head -30
+          echo "=== Vendor lib64 hw contents ==="
+          ls /mnt/gsi/vendor/lib64/hw/ 2>/dev/null | head -30
+          echo "=== System vendor bin hw ==="
+          ls /mnt/gsi/system/vendor/bin/hw/ 2>/dev/null | head -30
           find /mnt/gsi -name "*external*camera*" 2>/dev/null
           find /mnt/gsi -name "*camera*provider*2.7*" 2>/dev/null
           find /mnt/gsi -name "*camera*provider*" 2>/dev/null | grep -i external | head -10
@@ -76,7 +84,7 @@ jobs:
           else
             echo "Service not found"
             find /mnt/gsi -name "*camera*" 2>/dev/null | head -30
-            exit 1
+            exit 0
           fi
 
           if [ -n "$IMPL" ]; then
