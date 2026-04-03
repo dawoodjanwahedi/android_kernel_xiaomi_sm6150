@@ -132,6 +132,7 @@ jobs:
             art/imgdiag \
             art/libdexfile \
             art/compiler \
+            art/dexlayout \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
             libnativehelper/tests_mts; do
