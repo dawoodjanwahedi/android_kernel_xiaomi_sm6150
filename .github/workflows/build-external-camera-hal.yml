@@ -38,6 +38,13 @@ jobs:
           git config --global user.name "CI Build"
           git config --global color.ui false
 
+      - name: Clean previous AOSP sync
+        run: |
+          echo "Cleaning previous AOSP directory..."
+          rm -rf ~/aosp
+          echo "Done, disk space:"
+          df -h ~
+
       - name: Repo init AOSP android-14.0.0_r67
         run: |
           mkdir -p ~/aosp && cd ~/aosp
