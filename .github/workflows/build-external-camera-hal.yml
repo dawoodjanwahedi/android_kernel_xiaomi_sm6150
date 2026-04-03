@@ -60,7 +60,6 @@ jobs:
           cd ~/aosp
           repo sync -j8 --no-tags --no-clone-bundle \
             hardware/interfaces \
-            hardware/interfaces/neuralnetworks \
             hardware/libhardware \
             frameworks/av \
             frameworks/native \
@@ -108,6 +107,7 @@ jobs:
             external/expat \
             external/libxml2 \
             external/starlark-go \
+            packages/modules/NeuralNetworks \
             libnativehelper
 
       - name: Build external camera HAL
