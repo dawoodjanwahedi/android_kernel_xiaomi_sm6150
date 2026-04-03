@@ -71,7 +71,7 @@ jobs:
             system/libbase \
             system/libfmq \
             system/libvintf \
-            system/libkernelconfigs \
+            kernel/configs \
             prebuilts/clang/host/linux-x86 \
             prebuilts/build-tools \
             prebuilts/go/linux-x86 \
