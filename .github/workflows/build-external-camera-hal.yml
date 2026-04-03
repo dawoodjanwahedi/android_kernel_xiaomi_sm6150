@@ -24,59 +24,54 @@ jobs:
           chmod a+x ~/.local/bin/repo
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Download AOSP system image with external camera HAL
+      - name: Download arm64 GSI with external camera HAL
         run: |
-          # Download Android 14 x86_64 system image which contains prebuilt camera HAL
-          wget -q "https://dl.google.com/android/repository/sys-img/android/x86_64-34_r01.zip" -O sysimg.zip
-          unzip -q sysimg.zip
-          ls -la
+          # Download Raspberry Pi LineageOS 20 which has external camera HAL prebuilt for arm64
+          wget -q "https://sourceforge.net/projects/andyyan-gsi/files/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz/download" -O lineage20.img.gz
+          gunzip lineage20.img.gz
+          ls -lh lineage20.img
+          file lineage20.img
 
-      - name: Extract HAL from system image
+      - name: Extract HAL from GSI
         run: |
-          SYSIMG=$(find . -name "system.img" | head -1)
-          echo "Found: $SYSIMG"
-          file "$SYSIMG"
+          sudo apt-get install -y erofs-utils
 
-          # It's a GPT disk image - find partition offset
-          sudo apt-get install -y kpartx
-          sudo kpartx -av "$SYSIMG"
-          lsblk
+          # Mount the GSI
+          sudo mkdir -p /mnt/gsi
+          sudo mount -o loop,ro lineage20.img /mnt/gsi 2>/dev/null || \
+          sudo mount -t erofs -o loop,ro lineage20.img /mnt/gsi 2>/dev/null || \
+          { echo "Mount failed"; file lineage20.img; exit 1; }
 
-          # Mount the first partition
-          sudo mkdir -p /mnt/sysimg
-          LOOPDEV=$(sudo losetup -j "$SYSIMG" | cut -d: -f1 | head -1)
-          echo "Loop device: $LOOPDEV"
+          echo "=== GSI contents ==="
+          ls /mnt/gsi/
 
-          # Try mounting each partition
-          for i in 1 2 3 4; do
-            PART="${LOOPDEV}p${i}"
-            echo "Trying $PART"
-            sudo mount -o ro "$PART" /mnt/sysimg 2>/dev/null && echo "Mounted $PART" && break
-            sudo mount -t erofs -o ro "$PART" /mnt/sysimg 2>/dev/null && echo "Mounted erofs $PART" && break
-          done
+          echo "=== Looking for external camera HAL ==="
+          find /mnt/gsi -name "*external*camera*" 2>/dev/null
+          find /mnt/gsi -name "*camera*provider*2.7*" 2>/dev/null
+          find /mnt/gsi -name "*camera*provider*" 2>/dev/null | grep -i external | head -10
 
-          echo "=== Mount contents ==="
-          ls /mnt/sysimg/ || echo "Mount failed"
-
-          echo "=== Looking for camera HAL ==="
-          find /mnt/sysimg -name "*camera*external*" 2>/dev/null
-          find /mnt/sysimg -name "*external*camera*" 2>/dev/null
-          find /mnt/sysimg -name "*camera*provider*" 2>/dev/null | head -20
-
-          # Copy files
+          # Copy HAL files
           mkdir -p module_tmp/system/vendor/bin/hw
+          mkdir -p module_tmp/system/vendor/lib64/hw
           mkdir -p module_tmp/system/vendor/etc/init
           mkdir -p module_tmp/system/vendor/etc
           mkdir -p module_tmp/META-INF/com/google/android
 
-          HAL=$(find /mnt/sysimg -name "*camera*provider*external*" -o -name "*external*camera*service*" 2>/dev/null | head -1)
-          if [ -n "$HAL" ]; then
-            cp "$HAL" module_tmp/system/vendor/bin/hw/
-            echo "Copied: $HAL"
+          SERVICE=$(find /mnt/gsi -name "*camera*provider*2.7*external*service*" -o -name "*external*camera*provider*service*" 2>/dev/null | head -1)
+          IMPL=$(find /mnt/gsi -name "*camera*provider*2.7*impl*" 2>/dev/null | head -1)
+
+          if [ -n "$SERVICE" ]; then
+            cp "$SERVICE" module_tmp/system/vendor/bin/hw/
+            echo "Copied service: $SERVICE"
           else
-            echo "HAL not found, listing camera files:"
-            find /mnt/sysimg -name "*camera*" 2>/dev/null | head -30
+            echo "Service not found"
+            find /mnt/gsi -name "*camera*" 2>/dev/null | head -30
             exit 1
+          fi
+
+          if [ -n "$IMPL" ]; then
+            cp "$IMPL" module_tmp/system/vendor/lib64/hw/
+            echo "Copied impl: $IMPL"
           fi
 
       - name: Create module files
