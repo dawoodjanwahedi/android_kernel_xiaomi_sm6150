@@ -64,8 +64,10 @@ jobs:
             hardware/libhardware \
             frameworks/av \
             frameworks/native \
+            art \
             system/tools/xsdc \
             system/core \
+            system/sepolicy \
             system/tools/aidl \
             system/tools/hidl \
             system/libhidl \
@@ -124,7 +126,9 @@ jobs:
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
+            system/core/init \
             packages/modules/NeuralNetworks \
+            libnativehelper/tests \
             libnativehelper/tests_mts; do
             find "$dir" -name "Android.bp" 2>/dev/null | while read f; do
               echo "// disabled" > "$f"
