@@ -127,8 +127,12 @@ jobs:
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
             system/core/init \
-            art/test \             art/dex2oat \
-             art/imgdiag \            packages/modules/NeuralNetworks \
+            art/test \
+            art/dex2oat \
+            art/imgdiag \
+            art/libdexfile \
+            art/compiler \
+            packages/modules/NeuralNetworks \
             libnativehelper/tests \
             libnativehelper/tests_mts; do
             find "$dir" -name "Android.bp" 2>/dev/null | while read f; do
