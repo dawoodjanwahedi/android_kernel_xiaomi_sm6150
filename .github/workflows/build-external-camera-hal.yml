@@ -97,7 +97,11 @@ jobs:
           open('vendor/google/release/releases/ap1a.textproto', 'w').write('name: \"ap1a\"\n')
           print('Release config created')
           "
-          lunch aosp_arm64-ap1a-user
+          echo "=== Available releases ==="
+          find vendor/google/release/releases/ -name "*.textproto" 2>/dev/null || echo "no vendor releases"
+          find build/make -name "*.textproto" 2>/dev/null | head -20
+          ls build/make/core/release_configs/ 2>/dev/null || echo "no release_configs dir"
+          lunch aosp_arm64-user
           m android.hardware.camera.provider@2.7-external-service -j8
 
       - name: Collect and package
