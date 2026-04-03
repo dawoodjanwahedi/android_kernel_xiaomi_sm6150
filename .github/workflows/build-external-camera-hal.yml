@@ -26,8 +26,11 @@ jobs:
 
       - name: Download arm64 GSI with external camera HAL
         run: |
-          # Download Raspberry Pi LineageOS 20 which has external camera HAL prebuilt for arm64
-          wget -q "https://sourceforge.net/projects/andyyan-gsi/files/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz/download" -O lineage20.img.gz
+          GSI_URL="https://sourceforge.net/projects/andyyan-gsi/files/lineage-20-td/lineage-20.0-20231115-UNOFFICIAL-arm64_bvN.img.gz/download"
+          echo "Downloading from: $GSI_URL"
+          wget --no-check-certificate -q "$GSI_URL" -O lineage20.img.gz
+          echo "Download exit code: $?"
+          ls -lh lineage20.img.gz
           gunzip lineage20.img.gz
           ls -lh lineage20.img
           file lineage20.img
