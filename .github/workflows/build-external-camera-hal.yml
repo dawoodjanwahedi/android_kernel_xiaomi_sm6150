@@ -129,7 +129,8 @@ jobs:
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
-            external/skia \
+            frameworks/native/libs/renderengine \
+            frameworks/native/services/surfaceflinger \
             system/core/init \
             art/test \
             art/dex2oat \
