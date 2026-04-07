@@ -127,6 +127,7 @@ jobs:
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
+            external/skia \
             system/core/init \
             art/test \
             art/dex2oat \
