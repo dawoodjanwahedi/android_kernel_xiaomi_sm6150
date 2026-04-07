@@ -138,6 +138,7 @@ jobs:
             art/libartservice \
             art/libartbase \
             art/libnativebridge \
+            art/profman \
             art/dexlist \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
