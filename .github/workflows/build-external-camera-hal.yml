@@ -136,6 +136,7 @@ jobs:
             art/tools \
             art/runtime \
             art/libartservice \
+            art/libartbase \
             art/dexlist \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
