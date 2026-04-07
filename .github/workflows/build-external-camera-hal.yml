@@ -133,6 +133,7 @@ jobs:
             art/libdexfile \
             art/compiler \
             art/dexlayout \
+            art/tools \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
             libnativehelper/tests_mts; do
@@ -156,6 +157,12 @@ jobs:
 
           # Stub frameworks/native/cmds/installd to remove libapexd-deps error
           find frameworks/native/cmds/installd -name "Android.bp" 2>/dev/null | while read f; do
+            echo "// disabled" > "$f"
+            echo "Disabled $f"
+          done
+
+          # Stub system/libhidl/transport/base to remove libinit_test_utils error
+          find system/libhidl/transport/base -name "Android.bp" 2>/dev/null | while read f; do
             echo "// disabled" > "$f"
             echo "Disabled $f"
           done
