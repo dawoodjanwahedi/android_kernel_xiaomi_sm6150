@@ -103,6 +103,7 @@ jobs:
             external/jsoncpp \
             external/libyuv \
             external/libjpeg-turbo \
+            external/skia \
             external/protobuf \
             external/lz4 \
             external/zlib \
@@ -126,8 +127,6 @@ jobs:
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
-            frameworks/native/services/surfaceflinger \
-            frameworks/native/libs/renderengine \
             system/core/init \
             art/test \
             art/dex2oat \
