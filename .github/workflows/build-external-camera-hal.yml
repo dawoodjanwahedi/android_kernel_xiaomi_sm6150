@@ -142,6 +142,7 @@ jobs:
             art/odrefresh \
             art/sigchainlib \
             art/libprofile \
+            art/libartpalette \
             art/dexlist \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
