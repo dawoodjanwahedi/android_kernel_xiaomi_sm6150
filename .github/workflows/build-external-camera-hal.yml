@@ -154,6 +154,12 @@ jobs:
             echo "Disabled $f"
           done
 
+          # Stub frameworks/native/cmds/installd to remove libapexd-deps error
+          find frameworks/native/cmds/installd -name "Android.bp" 2>/dev/null | while read f; do
+            echo "// disabled" > "$f"
+            echo "Disabled $f"
+          done
+
           lunch aosp_arm64-userdebug
           m android.hardware.camera.provider@2.7-external-service android.hardware.camera.provider@2.7-impl -j4
 
