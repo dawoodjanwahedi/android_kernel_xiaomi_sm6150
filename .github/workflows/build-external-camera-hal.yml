@@ -131,6 +131,7 @@ jobs:
             hardware/interfaces/bluetooth \
             frameworks/native/libs/renderengine \
             frameworks/native/services/surfaceflinger \
+            frameworks/av/media/libstagefright/renderfright \
             system/core/init \
             art/test \
             art/dex2oat \
