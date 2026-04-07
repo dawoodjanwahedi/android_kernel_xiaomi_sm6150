@@ -59,7 +59,9 @@ jobs:
       - name: Repo sync
         run: |
           cd ~/aosp
-          repo sync -j8 --no-tags --no-clone-bundle \
+          df -h
+          free -h
+          repo sync --fail-fast -j1 --no-tags --no-clone-bundle \
             hardware/interfaces \
             hardware/libhardware \
             frameworks/av \
