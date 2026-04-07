@@ -134,6 +134,9 @@ jobs:
             art/compiler \
             art/dexlayout \
             art/tools \
+            art/runtime \
+            art/libartservice \
+            art/dexlist \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
             libnativehelper/tests_mts; do
