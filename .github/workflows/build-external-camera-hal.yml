@@ -140,6 +140,7 @@ jobs:
             art/libnativebridge \
             art/profman \
             art/odrefresh \
+            art/sigchainlib \
             art/dexlist \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
