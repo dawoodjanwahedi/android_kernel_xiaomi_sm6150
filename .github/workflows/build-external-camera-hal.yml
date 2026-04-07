@@ -145,6 +145,23 @@ jobs:
             art/build \
             art/libartpalette \
             art/dexlist \
+            art/libelffile \
+            art/benchmark \
+            art/disassembler \
+            art/dalvikvm \
+            art/artd \
+            art/libarttools \
+            art/perfetto_hprof \
+            art/openjdkjvmti \
+            art/dexdump \
+            art/oatdump \
+            art/cmdline \
+            art/libnativeloader \
+            art/openjdkjvm \
+            art/dt_fd_forward \
+            art/adbconnection \
+            art/dexoptanalyzer \
+            art/simulator \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
             libnativehelper/tests_mts; do
