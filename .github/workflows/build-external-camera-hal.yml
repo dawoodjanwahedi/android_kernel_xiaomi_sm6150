@@ -141,6 +141,7 @@ jobs:
             art/profman \
             art/odrefresh \
             art/sigchainlib \
+            art/libprofile \
             art/dexlist \
             packages/modules/NeuralNetworks \
             libnativehelper/tests \
@@ -171,6 +172,12 @@ jobs:
 
           # Stub system/libhidl/transport/base to remove libinit_test_utils error
           find system/libhidl/transport/base -name "Android.bp" 2>/dev/null | while read f; do
+            echo "// disabled" > "$f"
+            echo "Disabled $f"
+          done
+
+          # Stub system/libhidl to remove libhwbinder error
+          find system/libhidl -name "Android.bp" 2>/dev/null | while read f; do
             echo "// disabled" > "$f"
             echo "Disabled $f"
           done
