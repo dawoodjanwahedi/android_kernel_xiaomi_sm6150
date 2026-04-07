@@ -129,6 +129,7 @@ jobs:
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
+            external/skia \
             frameworks/native/libs/renderengine \
             frameworks/native/services/surfaceflinger \
             frameworks/av/media/libstagefright/renderfright \
