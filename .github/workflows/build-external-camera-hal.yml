@@ -130,6 +130,7 @@ jobs:
             hardware/interfaces/tv \
             hardware/interfaces/audio \
             hardware/interfaces/bluetooth \
+            hardware/interfaces/soundtrigger \
             hardware/interfaces/graphics/allocator/aidl/vts \
             hardware/interfaces/graphics/composer/aidl/vts \
             hardware/interfaces/graphics/composer/2.2/vts/functional \
