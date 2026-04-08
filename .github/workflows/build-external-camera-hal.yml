@@ -138,8 +138,10 @@ jobs:
             external/skia \
             frameworks/native/libs/renderengine \
             frameworks/native/services/surfaceflinger \
+            frameworks/av/services/tuner \
             frameworks/av/media/libstagefright/renderfright \
             frameworks/av/media/libaudioclient \
+            frameworks/av/media/libaaudio \
             system/core/init \
             art/test \
             art/dex2oat \
