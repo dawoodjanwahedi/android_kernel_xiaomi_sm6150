@@ -67,6 +67,7 @@ jobs:
             frameworks/av \
             frameworks/native \
             art \
+            libcore \
             system/tools/xsdc \
             system/core \
             system/sepolicy \
