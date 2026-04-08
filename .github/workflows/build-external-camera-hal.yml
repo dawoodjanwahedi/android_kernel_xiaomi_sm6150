@@ -131,6 +131,8 @@ jobs:
             hardware/interfaces/bluetooth \
             hardware/interfaces/graphics/allocator/aidl/vts \
             hardware/interfaces/graphics/composer/aidl/vts \
+            hardware/interfaces/graphics/composer/2.2/vts/functional \
+            hardware/interfaces/graphics/composer/2.1/vts/functional \
             external/skia \
             frameworks/native/libs/renderengine \
             frameworks/native/services/surfaceflinger \
